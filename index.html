@@ -1,460 +1,1098 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Analisador de OS Recorrentes</title>
+<title>Análise de OS — Ferramentas</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-  :root{
+  /* ===== Navegação por abas ===== */
+  html, body { margin:0; padding:0; background:#0f172a; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .tabs-nav {
+    display: flex; gap: 0; background: #0f172a; padding: 0;
+    border-bottom: 2px solid #334155;
+  }
+  .tabs-nav button {
+    padding: 14px 24px; border: none; background: transparent;
+    color: #94a3b8; font-size: 14px; font-weight: 600; cursor: pointer;
+    font-family: inherit; border-bottom: 3px solid transparent;
+    margin-bottom: -2px; transition: color .15s, border-color .15s;
+  }
+  .tabs-nav button:hover { color: #e2e8f0; }
+  .tabs-nav button.active { color: #fff; border-bottom-color: #2563eb; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ================= TOOL 1 — Analisador de OS Recorrentes ================= */
+  #tool1{
     --bg:#f5f6f8; --card:#fff; --ink:#1b2430; --muted:#667085; --line:#e4e7ec;
     --accent:#1d5fd1; --accent-ink:#fff; --warn:#b42318; --warn-bg:#fef3f2; --ok-bg:#eef4ff;
     --dim:#98a2b3;
+    background:var(--bg); color:var(--ink);
+    font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    min-height:100vh;
   }
   @media (prefers-color-scheme: dark){
-    :root{ --bg:#0f141b; --card:#171e28; --ink:#e7ebf1; --muted:#98a2b3; --line:#283240;
+    #tool1{ --bg:#0f141b; --card:#171e28; --ink:#e7ebf1; --muted:#98a2b3; --line:#283240;
       --accent:#5b9bff; --accent-ink:#0b1220; --warn:#ff8f85; --warn-bg:#3a1b19; --ok-bg:#16233a; --dim:#667085; }
   }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-  .wrap{max-width:1240px;margin:0 auto;padding:20px 16px 60px}
-  h1{font-size:22px;margin:0 0 2px}
-  .sub{color:var(--muted);margin:0 0 18px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:14px}
-  .drop{border:2px dashed var(--line);border-radius:10px;padding:22px;text-align:center;cursor:pointer;color:var(--muted)}
-  .drop.over{border-color:var(--accent);background:var(--ok-bg)}
-  .drop strong{color:var(--ink)}
-  .files{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px}
-  .tag{background:var(--ok-bg);border-radius:99px;padding:3px 10px;font-size:12px}
-  .tag button{border:0;background:none;color:var(--muted);cursor:pointer;padding:0 0 0 6px;font-size:13px}
-  .msg{margin-top:10px;font-size:13px}
-  .msg.err{color:var(--warn)}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
-  label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);font-weight:600}
-  input,select{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:7px 9px;min-width:0}
-  input:focus,select:focus,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-  button.btn{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:6px;padding:7px 12px;cursor:pointer}
-  button.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
-  button.btn:disabled{opacity:.5;cursor:not-allowed}
-  details.subj summary{cursor:pointer;font-weight:600;font-size:13px}
-  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
-  .chip{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:99px;padding:3px 10px;font-size:12px;cursor:pointer;user-select:none}
-  .chip.on{background:var(--ok-bg);border-color:var(--accent)}
-  .chip input{display:none}
-  .chip small{color:var(--muted)}
-  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
-  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px}
-  .kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
-  .kpi b{display:block;font-size:26px;line-height:1.1}
-  .kpi span{color:var(--muted);font-size:12px}
-  table{width:100%;border-collapse:collapse}
-  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
-  th{font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap;user-select:none;position:sticky;top:0;background:var(--card)}
-  th.sorted::after{content:" ▼"} th.sorted.asc::after{content:" ▲"}
-  tr.main{cursor:pointer} tr.main:hover td{background:var(--ok-bg)}
-  td.num,th.num{text-align:right}
-  .pill{display:inline-block;background:var(--warn-bg);color:var(--warn);border-radius:99px;padding:1px 9px;font-weight:700;font-size:12px}
-  .caret{display:inline-block;width:14px;color:var(--muted);transition:transform .15s}
-  tr.open .caret{transform:rotate(90deg)}
-  tr.detail td{background:var(--bg);padding:0}
-  .inner{padding:10px 14px 14px 34px}
-  .inner table th{position:static;cursor:default;background:transparent}
-  .inner td.num,.inner th.num{padding-right:28px}
-  tr.dim td{color:var(--dim)}
-  tr.hit td.gap{color:var(--warn);font-weight:700}
-  .muted{color:var(--muted)}
-  .rule{font-size:12.5px;color:var(--muted)}
-  .scroll{overflow-x:auto}
-  .empty{padding:30px;text-align:center;color:var(--muted)}
-  .hidden{display:none}
+  #tool1, #tool1 *{box-sizing:border-box}
+  #tool1 .wrap{max-width:1240px;margin:0 auto;padding:20px 16px 60px}
+  #tool1 h1{font-size:22px;margin:0 0 2px}
+  #tool1 .sub{color:var(--muted);margin:0 0 18px}
+  #tool1 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:14px}
+  #tool1 .drop{border:2px dashed var(--line);border-radius:10px;padding:22px;text-align:center;cursor:pointer;color:var(--muted)}
+  #tool1 .drop.over{border-color:var(--accent);background:var(--ok-bg)}
+  #tool1 .drop strong{color:var(--ink)}
+  #tool1 .files{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px}
+  #tool1 .tag{background:var(--ok-bg);border-radius:99px;padding:3px 10px;font-size:12px}
+  #tool1 .tag button{border:0;background:none;color:var(--muted);cursor:pointer;padding:0 0 0 6px;font-size:13px}
+  #tool1 .msg{margin-top:10px;font-size:13px}
+  #tool1 .msg.err{color:var(--warn)}
+  #tool1 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+  #tool1 label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);font-weight:600}
+  #tool1 input,#tool1 select{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:7px 9px;min-width:0}
+  #tool1 input:focus,#tool1 select:focus,#tool1 button:focus-visible,#tool1 summary:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  #tool1 button.btn{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:6px;padding:7px 12px;cursor:pointer}
+  #tool1 button.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+  #tool1 button.btn:disabled{opacity:.5;cursor:not-allowed}
+  #tool1 details.subj summary{cursor:pointer;font-weight:600;font-size:13px}
+  #tool1 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  #tool1 .chip{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:99px;padding:3px 10px;font-size:12px;cursor:pointer;user-select:none}
+  #tool1 .chip.on{background:var(--ok-bg);border-color:var(--accent)}
+  #tool1 .chip input{display:none}
+  #tool1 .chip small{color:var(--muted)}
+  #tool1 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+  #tool1 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px}
+  #tool1 .kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font:inherit;color:inherit;text-align:left;cursor:pointer;transition:border-color .12s,box-shadow .12s}
+  #tool1 .kpi:hover{border-color:var(--accent)}
+  #tool1 .kpi.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent);background:var(--ok-bg)}
+  #tool1 .kpi:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  #tool1 .kpi b{display:block;font-size:26px;line-height:1.1}
+  #tool1 .kpi span{color:var(--muted);font-size:12px}
+  #tool1 table{width:100%;border-collapse:collapse}
+  #tool1 th,#tool1 td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  #tool1 th{font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap;user-select:none;position:sticky;top:0;background:var(--card)}
+  #tool1 th.sorted::after{content:" ▼"}
+  #tool1 th.sorted.asc::after{content:" ▲"}
+  #tool1 tr.main{cursor:pointer}
+  #tool1 tr.main:hover td{background:var(--ok-bg)}
+  #tool1 td.num,#tool1 th.num{text-align:right}
+  #tool1 .pill{display:inline-block;background:var(--warn-bg);color:var(--warn);border-radius:99px;padding:1px 9px;font-weight:700;font-size:12px}
+  #tool1 .caret{display:inline-block;width:14px;color:var(--muted);transition:transform .15s}
+  #tool1 tr.open .caret{transform:rotate(90deg)}
+  #tool1 tr.detail td{background:var(--bg);padding:0}
+  #tool1 .inner{padding:10px 14px 14px 34px}
+  #tool1 .inner table th{position:static;cursor:default;background:transparent}
+  #tool1 .inner td.num,#tool1 .inner th.num{padding-right:28px}
+  #tool1 tr.dim td{color:var(--dim)}
+  #tool1 tr.hit td.gap{color:var(--warn);font-weight:700}
+  #tool1 .muted{color:var(--muted)}
+  #tool1 .rule{font-size:12.5px;color:var(--muted)}
+  #tool1 .scroll{overflow-x:auto}
+  #tool1 .empty{padding:30px;text-align:center;color:var(--muted)}
+  #tool1 .hidden{display:none}
+
+  /* ================= TOOL 2 — Agenda de Clientes Recorrentes ================= */
+  #tool2{
+    --bg:#f4f6f9; --card:#fff; --primary:#2563eb; --primary-dark:#1e40af;
+    --border:#e2e8f0; --text:#1e293b; --muted:#64748b;
+    --critical:#dc2626; --high:#ea580c; --medium:#ca8a04; --low:#16a34a;
+    background:var(--bg); color:var(--text);
+    font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
+    min-height:100vh;
+  }
+  #tool2, #tool2 *{box-sizing:border-box}
+  #tool2 header{background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;padding:20px 30px}
+  #tool2 header h1{margin:0 0 4px;font-size:22px}
+  #tool2 header p{margin:0;opacity:.85;font-size:13px}
+  #tool2 main{padding:20px 30px;max-width:1700px;margin:0 auto}
+  #tool2 .controls{display:flex;flex-wrap:wrap;gap:12px;align-items:end;background:var(--card);padding:16px;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.05);margin-bottom:16px}
+  #tool2 .field{display:flex;flex-direction:column;gap:4px}
+  #tool2 .field label{font-size:12px;color:var(--muted);font-weight:600}
+  #tool2 .field input,#tool2 .field select{padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:14px;background:#fff;min-width:150px}
+  #tool2 button{padding:9px 16px;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;background:var(--primary);color:#fff;transition:background .15s;font-family:inherit}
+  #tool2 button:hover{background:var(--primary-dark)}
+  #tool2 button.secondary{background:#475569}
+  #tool2 button.secondary:hover{background:#334155}
+  #tool2 button:disabled{background:#cbd5e1;cursor:not-allowed}
+  #tool2 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+  #tool2 .card{background:var(--card);border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.05);border-left:4px solid var(--primary);cursor:pointer;transition:transform .15s,box-shadow .15s,border-color .15s;position:relative;user-select:none}
+  #tool2 .card:hover{transform:translateY(-2px);box-shadow:0 4px 6px rgba(0,0,0,.1)}
+  #tool2 .card.active{box-shadow:0 0 0 3px rgba(37,99,235,0.3);border-left-width:6px;background:#f8fafc}
+  #tool2 .card.active::after{content:'✓ Filtro Ativo';position:absolute;top:10px;right:12px;font-size:10px;background:var(--primary);color:white;padding:2px 6px;border-radius:4px;font-weight:bold;letter-spacing:0.5px}
+  #tool2 .card .label{font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:700;padding-right:70px}
+  #tool2 .card .value{font-size:24px;font-weight:800;margin-top:4px}
+  #tool2 .card.critical{border-left-color:var(--critical)}
+  #tool2 .card.high{border-left-color:var(--high)}
+  #tool2 .card.medium{border-left-color:var(--medium)}
+  #tool2 .card.low{border-left-color:var(--low)}
+  #tool2 .filter-pill-container{display:flex;align-items:center;gap:8px;margin-bottom:12px;min-height:32px}
+  #tool2 .filter-pill{display:inline-flex;align-items:center;gap:8px;background:#e0e7ff;color:#3730a3;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:600;border:1px solid #a5b4fc;box-shadow:0 2px 4px rgba(0,0,0,.05)}
+  #tool2 .filter-pill button{background:#c7d2fe;border:none;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;padding:0;font-size:14px;color:#3730a3;cursor:pointer;font-weight:bold;transition:background .15s}
+  #tool2 .filter-pill button:hover{background:#a5b4fc;color:#000}
+  #tool2 .filters{display:flex;flex-wrap:wrap;gap:10px;align-items:end;background:var(--card);padding:12px 16px;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.05);margin-bottom:12px}
+  #tool2 .table-wrap{background:var(--card);border-radius:10px;overflow:auto;box-shadow:0 1px 3px rgba(0,0,0,.05);max-height:65vh}
+  #tool2 table{width:100%;border-collapse:collapse;font-size:13px}
+  #tool2 th,#tool2 td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+  #tool2 th{background:#f1f5f9;font-size:11px;text-transform:uppercase;color:var(--muted);position:sticky;top:0;z-index:1}
+  #tool2 tr:hover td{background:#f8fafc}
+  #tool2 .badge{padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;color:#fff;display:inline-block;white-space:nowrap}
+  #tool2 .badge.CRÍTICA{background:var(--critical)}
+  #tool2 .badge.ALTA{background:var(--high)}
+  #tool2 .badge.MÉDIA{background:var(--medium)}
+  #tool2 .badge.BAIXA{background:var(--low)}
+  #tool2 .badge.alto{background:var(--critical)}
+  #tool2 .badge.médio,#tool2 .badge.medio{background:var(--high)}
+  #tool2 .badge.baixo{background:var(--low)}
+  #tool2 td input[type="date"],#tool2 td input[type="text"]{width:100%;padding:4px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px}
+  #tool2 .empty{padding:40px;text-align:center;color:var(--muted)}
+  #tool2 .status-pill{font-size:11px;padding:2px 8px;border-radius:10px;background:#e0e7ff;color:#3730a3;font-weight:600;white-space:nowrap}
+  #tool2 .status-pill.has{background:#dcfce7;color:#166534}
+  #tool2 .status-pill.no{background:#fee2e2;color:#991b1b}
+  #tool2 .hint{font-size:12px;color:var(--muted);margin-top:6px}
+  #tool2 #refInfo{font-size:13px;color:var(--muted);margin-bottom:12px;font-weight:600;background:#fff;padding:10px 16px;border-radius:8px;display:inline-block;box-shadow:0 1px 2px rgba(0,0,0,.05)}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>Analisador de OS Recorrentes</h1>
-  <p class="sub">Carregue o relatório de OS (.xlsx ou .csv) e veja os clientes com mais de uma OS aberta em menos de N dias. Tudo roda no seu navegador — nenhum dado é enviado.</p>
 
-  <div class="card">
-    <div class="drop" id="drop" tabindex="0" role="button" aria-label="Selecionar arquivos">
-      <strong>Arraste os arquivos aqui</strong> ou clique para selecionar<br>
-      <span>Você pode carregar vários meses de uma vez; OS repetidas (mesmo IdOs) são ignoradas.</span>
-      <input id="file" type="file" accept=".xlsx,.csv" multiple class="hidden">
-    </div>
-    <div class="files" id="files"></div>
-    <div class="msg" id="msg"></div>
-  </div>
+<!-- ==================== ABAS ==================== -->
+<nav class="tabs-nav" role="tablist">
+  <button class="tab-btn active" data-target="tool1" role="tab">📊 Analisador de OS Recorrentes</button>
+  <button class="tab-btn" data-target="tool2" role="tab">📅 Agenda de Clientes Recorrentes</button>
+</nav>
 
-  <div id="app" class="hidden">
-    <div class="card">
-      <div class="grid">
-        <label class="f">Mês (atalho)
-          <select id="month"><option value="">—</option></select>
-        </label>
-        <label class="f">Início (abertura da OS)
-          <input type="date" id="from">
-        </label>
-        <label class="f">Fim (abertura da OS)
-          <input type="date" id="to">
-        </label>
-        <label class="f">Janela (dias)
-          <input type="number" id="win" min="1" value="30">
-        </label>
-        <label class="f">Mín. de OS na janela
-          <input type="number" id="minos" min="2" value="2">
-        </label>
-        <label class="f">Filial
-          <select id="filial"><option value="">Todas</option></select>
-        </label>
-        <label class="f">Buscar cliente / ID
-          <input type="search" id="q" placeholder="nome ou IdCliente">
-        </label>
-      </div>
-      <details class="subj" id="subjBox" style="margin-top:14px">
-        <summary>Assuntos considerados (<span id="subjCount"></span>)</summary>
-        <div class="row">
-          <button class="btn" id="subjAll">Todos</button>
-          <button class="btn" id="subjRep">Só reparos</button>
-          <button class="btn" id="subjNoPos">Sem pós-venda</button>
-          <button class="btn" id="subjNone">Nenhum</button>
-        </div>
-        <div class="chips" id="chips"></div>
-      </details>
-      <p class="rule" style="margin:12px 0 0">
-        Regra: considera as OS <b>abertas</b> dentro do período Início–Fim (inclusive). Um cliente aparece se tiver
-        duas ou mais OS cuja diferença entre as datas de abertura seja <b>menor que</b> a janela (em dias corridos, pela data, não pela hora).
-        As duas OS precisam estar dentro do período filtrado.
-      </p>
-    </div>
-
-    <div class="kpis" id="kpis"></div>
+<!-- ==================== TOOL 1 ==================== -->
+<div id="tool1" class="tab-panel active">
+  <div class="wrap">
+    <h1>Analisador de OS Recorrentes</h1>
+    <p class="sub">Carregue o relatório de OS (.xlsx ou .csv) e veja os clientes com mais de uma OS aberta em menos de N dias. Tudo roda no seu navegador — nenhum dado é enviado.</p>
 
     <div class="card">
-      <div class="row" style="margin:0 0 10px;justify-content:space-between">
-        <strong id="tableTitle">Clientes</strong>
-        <div class="row" style="margin:0">
-          <button class="btn" id="expand">Expandir todos</button>
-          <button class="btn primary" id="export">Exportar CSV</button>
-        </div>
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Selecionar arquivos">
+        <strong>Arraste os arquivos aqui</strong> ou clique para selecionar<br>
+        <span>Você pode carregar vários meses de uma vez; OS repetidas (mesmo IdOs) são ignoradas.</span>
+        <input id="file" type="file" accept=".xlsx,.csv" multiple class="hidden">
       </div>
-      <div class="scroll"><table id="tbl"></table></div>
+      <div class="files" id="files"></div>
+      <div class="msg" id="msg"></div>
+    </div>
+
+    <div id="app" class="hidden">
+      <div class="card">
+        <div class="grid">
+          <label class="f">Mês (atalho)
+            <select id="month"><option value="">—</option></select>
+          </label>
+          <label class="f">Início (abertura da OS)
+            <input type="date" id="from">
+          </label>
+          <label class="f">Fim (abertura da OS)
+            <input type="date" id="to">
+          </label>
+          <label class="f">Janela (dias)
+            <input type="number" id="win" min="1" value="30">
+          </label>
+          <label class="f">Mín. de OS na janela
+            <input type="number" id="minos" min="2" value="2">
+          </label>
+          <label class="f">Filial
+            <select id="filial"><option value="">Todas</option></select>
+          </label>
+          <label class="f">Buscar cliente / ID
+            <input type="search" id="q" placeholder="nome ou IdCliente">
+          </label>
+        </div>
+        <details class="subj" id="subjBox" style="margin-top:14px">
+          <summary>Assuntos considerados (<span id="subjCount"></span>)</summary>
+          <div class="row">
+            <button class="btn" id="subjAll">Todos</button>
+            <button class="btn" id="subjRep">Só reparos</button>
+            <button class="btn" id="subjNoPos">Sem pós-venda</button>
+            <button class="btn" id="subjNone">Nenhum</button>
+          </div>
+          <div class="chips" id="chips"></div>
+        </details>
+        <p class="rule" style="margin:12px 0 0">
+          Regra: considera as OS <b>abertas</b> dentro do período Início–Fim (inclusive). Um cliente aparece se tiver
+          duas ou mais OS cuja diferença entre as datas de abertura seja <b>menor que</b> a janela (em dias corridos, pela data, não pela hora).
+          As duas OS precisam estar dentro do período filtrado.
+        </p>
+      </div>
+
+      <div class="kpis" id="kpis"></div>
+      <p class="rule" style="margin:-6px 0 12px">Clique em um card para ver a lista correspondente abaixo.</p>
+
+      <div class="card">
+        <div class="row" style="margin:0 0 10px;justify-content:space-between">
+          <strong id="tableTitle">Clientes</strong>
+          <div class="row" style="margin:0">
+            <button class="btn" id="expand">Expandir todos</button>
+            <button class="btn primary" id="export">Exportar CSV</button>
+          </div>
+        </div>
+        <div class="scroll"><table id="tbl"></table></div>
+      </div>
     </div>
   </div>
 </div>
 
+<!-- ==================== TOOL 2 ==================== -->
+<div id="tool2" class="tab-panel">
+  <header>
+    <h1>Análise de OS — Agenda de Clientes Recorrentes</h1>
+    <p>Detecta clientes que abriram mais de uma OS no período selecionado e sugere agendamento para evitar cancelamentos.</p>
+  </header>
+
+  <main>
+    <div class="controls">
+      <div class="field">
+        <label>Arquivo XLSX</label>
+        <input type="file" id="fileInput" accept=".xlsx,.xls">
+      </div>
+      <div class="field">
+        <label>Data de Início</label>
+        <input type="date" id="startDate">
+      </div>
+      <div class="field">
+        <label>Data de Fim</label>
+        <input type="date" id="endDate">
+      </div>
+      <button id="btnAnalyze" disabled>Analisar</button>
+      <button id="btnExport" class="secondary" disabled>Exportar XLSX</button>
+    </div>
+
+    <div id="refInfo"></div>
+
+    <div class="cards" id="summary"></div>
+
+    <div id="filterPillContainer" class="filter-pill-container"></div>
+
+    <div class="filters">
+      <div class="field">
+        <label>Prioridade (Dropdown)</label>
+        <select id="filterPri">
+          <option value="">Todas</option>
+          <option>CRÍTICA</option>
+          <option>ALTA</option>
+          <option>MÉDIA</option>
+          <option>BAIXA</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Risco de cancelamento</label>
+        <select id="filterRisco">
+          <option value="">Todos</option>
+          <option>ALTO</option>
+          <option>MÉDIO</option>
+          <option>BAIXO</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Status da agenda</label>
+        <select id="filterStatus">
+          <option value="">Todos</option>
+          <option value="AGENDAR">AGENDAR</option>
+          <option value="CONFIRMAR">CONFIRMAR</option>
+        </select>
+      </div>
+      <div class="field" style="flex:1;min-width:220px">
+        <label>Buscar (cliente, bairro, ID)</label>
+        <input type="text" id="search" placeholder="Digite para filtrar...">
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Prioridade</th>
+            <th>Status</th>
+            <th>Data Limite</th>
+            <th>Cliente</th>
+            <th>Bairro</th>
+            <th>Qtde OS</th>
+            <th>Visitas</th>
+            <th>Última OS</th>
+            <th>Último Assunto</th>
+            <th>Técnicos</th>
+            <th>Risco</th>
+            <th>Data Planejada</th>
+            <th>Observação</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="13" class="empty">Carregue um arquivo XLSX para começar.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="hint">
+      <b>Dica:</b> Clique nos cards acima para filtrar a tabela. Clique novamente no mesmo card ou no "X" do balão para remover o filtro. A regra de data considerará estritamente o período selecionado.
+    </p>
+  </main>
+</div>
+
+<!-- ==================== ABAS: LÓGICA ==================== -->
 <script>
-"use strict";
-/* ================= Leitura de arquivos (sem bibliotecas externas) ================= */
-const DAY = 86400000;
-const $ = id => document.getElementById(id);
-const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const norm = s => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.target).classList.add('active');
+  });
+});
+</script>
 
-async function readZip(buf){
-  const dv = new DataView(buf), u8 = new Uint8Array(buf), dec = new TextDecoder();
-  let e = u8.length - 22;
-  while (e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--;
-  if (e < 0) throw new Error("Arquivo .xlsx inválido.");
-  const n = dv.getUint16(e + 10, true); let p = dv.getUint32(e + 16, true);
-  const files = {};
-  for (let i = 0; i < n; i++){
-    if (dv.getUint32(p, true) !== 0x02014b50) break;
-    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
-    const nl = dv.getUint16(p + 28, true), el = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true);
-    const lho = dv.getUint32(p + 42, true);
-    files[dec.decode(u8.subarray(p + 46, p + 46 + nl))] = {method, csize, lho};
-    p += 46 + nl + el + cl;
-  }
-  return async name => {
-    const f = files[name]; if (!f) return null;
-    const ln = dv.getUint16(f.lho + 26, true), le = dv.getUint16(f.lho + 28, true);
-    const s = f.lho + 30 + ln + le, data = u8.subarray(s, s + f.csize);
-    if (f.method === 0) return dec.decode(data);
-    const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
-    return await new Response(stream).text();
-  };
-}
-const xml = t => new DOMParser().parseFromString(t.replace(/^\uFEFF/, ""), "application/xml");
-const tags = (el, n) => el.getElementsByTagNameNS("*", n);
-const colIdx = ref => { let n = 0; for (const ch of ref.replace(/[0-9]/g, "")) n = n * 26 + ch.charCodeAt(0) - 64; return n - 1; };
+<!-- ==================== TOOL 1 — JS ==================== -->
+<script>
+(function(){
+  "use strict";
+  const DAY = 86400000;
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const norm = s => String(s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
-async function readXlsx(buf){
-  const get = await readZip(buf);
-  const ss = [];
-  const sst = await get("xl/sharedStrings.xml");
-  if (sst) for (const si of tags(xml(sst), "si")){
-    ss.push([...tags(si, "t")].map(t => t.textContent).join(""));
-  }
-  let path = null;
-  try {
-    const wb = xml(await get("xl/workbook.xml")), rels = xml(await get("xl/_rels/workbook.xml.rels"));
-    const sh = tags(wb, "sheet")[0];
-    const rid = sh.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id") || sh.getAttribute("r:id");
-    for (const r of tags(rels, "Relationship")) if (r.getAttribute("Id") === rid){
-      let t = r.getAttribute("Target"); path = t.startsWith("/") ? t.slice(1) : "xl/" + t;
+  async function readZip(buf){
+    const dv = new DataView(buf), u8 = new Uint8Array(buf), dec = new TextDecoder();
+    let e = u8.length - 22;
+    while (e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--;
+    if (e < 0) throw new Error("Arquivo .xlsx inválido.");
+    const n = dv.getUint16(e + 10, true); let p = dv.getUint32(e + 16, true);
+    const files = {};
+    for (let i = 0; i < n; i++){
+      if (dv.getUint32(p, true) !== 0x02014b50) break;
+      const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
+      const nl = dv.getUint16(p + 28, true), el = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true);
+      const lho = dv.getUint32(p + 42, true);
+      files[dec.decode(u8.subarray(p + 46, p + 46 + nl))] = {method, csize, lho};
+      p += 46 + nl + el + cl;
     }
-  } catch(_) {}
-  let sx = path && await get(path);
-  if (!sx) sx = await get("xl/worksheets/sheet1.xml");
-  if (!sx) throw new Error("Planilha não encontrada dentro do arquivo.");
-  const rows = [];
-  for (const r of tags(xml(sx), "row")){
-    const arr = []; let pos = 0;
-    for (const c of tags(r, "c")){
-      const t = c.getAttribute("t"), v = tags(c, "v")[0];
-      let val = null;
-      if (t === "inlineStr") val = [...tags(c, "t")].map(x => x.textContent).join("");
-      else if (v){
-        if (t === "s") val = ss[+v.textContent];
-        else if (t === "str" || t === "e") val = v.textContent;
-        else if (t === "b") val = v.textContent === "1";
-        else val = parseFloat(v.textContent);
+    return async name => {
+      const f = files[name]; if (!f) return null;
+      const ln = dv.getUint16(f.lho + 26, true), le = dv.getUint16(f.lho + 28, true);
+      const s = f.lho + 30 + ln + le, data = u8.subarray(s, s + f.csize);
+      if (f.method === 0) return dec.decode(data);
+      const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+      return await new Response(stream).text();
+    };
+  }
+  const xml = t => new DOMParser().parseFromString(t.replace(/^\uFEFF/, ""), "application/xml");
+  const tags = (el, n) => el.getElementsByTagNameNS("*", n);
+  const colIdx = ref => { let n = 0; for (const ch of ref.replace(/[0-9]/g, "")) n = n * 26 + ch.charCodeAt(0) - 64; return n - 1; };
+
+  async function readXlsx(buf){
+    const get = await readZip(buf);
+    const ss = [];
+    const sst = await get("xl/sharedStrings.xml");
+    if (sst) for (const si of tags(xml(sst), "si")){
+      ss.push([...tags(si, "t")].map(t => t.textContent).join(""));
+    }
+    let path = null;
+    try {
+      const wb = xml(await get("xl/workbook.xml")), rels = xml(await get("xl/_rels/workbook.xml.rels"));
+      const sh = tags(wb, "sheet")[0];
+      const rid = sh.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id") || sh.getAttribute("r:id");
+      for (const r of tags(rels, "Relationship")) if (r.getAttribute("Id") === rid){
+        let t = r.getAttribute("Target"); path = t.startsWith("/") ? t.slice(1) : "xl/" + t;
       }
-      const ref = c.getAttribute("r"); const ci = ref ? colIdx(ref) : pos; arr[ci] = val; pos = ci + 1;
+    } catch(_) {}
+    let sx = path && await get(path);
+    if (!sx) sx = await get("xl/worksheets/sheet1.xml");
+    if (!sx) throw new Error("Planilha não encontrada dentro do arquivo.");
+    const rows = [];
+    for (const r of tags(xml(sx), "row")){
+      const arr = []; let pos = 0;
+      for (const c of tags(r, "c")){
+        const t = c.getAttribute("t"), v = tags(c, "v")[0];
+        let val = null;
+        if (t === "inlineStr") val = [...tags(c, "t")].map(x => x.textContent).join("");
+        else if (v){
+          if (t === "s") val = ss[+v.textContent];
+          else if (t === "str" || t === "e") val = v.textContent;
+          else if (t === "b") val = v.textContent === "1";
+          else val = parseFloat(v.textContent);
+        }
+        const ref = c.getAttribute("r"); const ci = ref ? colIdx(ref) : pos; arr[ci] = val; pos = ci + 1;
+      }
+      rows.push(arr);
     }
-    rows.push(arr);
+    return rows;
   }
-  return rows;
-}
 
-function readCsv(text){
-  text = text.replace(/^﻿/, "");
-  const first = text.split(/\r?\n/, 1)[0];
-  const d = (first.match(/;/g) || []).length >= (first.match(/,/g) || []).length ? ";" : ",";
-  const rows = []; let row = [], cur = "", q = false;
-  for (let i = 0; i < text.length; i++){
-    const ch = text[i];
-    if (q){ if (ch === '"'){ if (text[i+1] === '"'){ cur += '"'; i++; } else q = false; } else cur += ch; }
-    else if (ch === '"') q = true;
-    else if (ch === d){ row.push(cur); cur = ""; }
-    else if (ch === "\n" || ch === "\r"){ if (ch === "\r" && text[i+1] === "\n") i++; row.push(cur); rows.push(row); row = []; cur = ""; }
-    else cur += ch;
+  function readCsv(text){
+    text = text.replace(/^﻿/, "");
+    const first = text.split(/\r?\n/, 1)[0];
+    const d = (first.match(/;/g) || []).length >= (first.match(/,/g) || []).length ? ";" : ",";
+    const rows = []; let row = [], cur = "", q = false;
+    for (let i = 0; i < text.length; i++){
+      const ch = text[i];
+      if (q){ if (ch === '"'){ if (text[i+1] === '"'){ cur += '"'; i++; } else q = false; } else cur += ch; }
+      else if (ch === '"') q = true;
+      else if (ch === d){ row.push(cur); cur = ""; }
+      else if (ch === "\n" || ch === "\r"){ if (ch === "\r" && text[i+1] === "\n") i++; row.push(cur); rows.push(row); row = []; cur = ""; }
+      else cur += ch;
+    }
+    if (cur || row.length){ row.push(cur); rows.push(row); }
+    return rows;
   }
-  if (cur || row.length){ row.push(cur); rows.push(row); }
-  return rows;
-}
 
-// Converte serial do Excel, "dd/mm/aaaa hh:mm" ou ISO em ms (tratado como UTC, sem fuso)
-function toMs(v){
-  if (v == null || v === "") return null;
-  if (typeof v === "number") return Math.round((v - 25569) * DAY);
-  const s = String(v).trim();
-  let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
-  if (m) return Date.UTC(+m[3], +m[2]-1, +m[1], +(m[4]||0), +(m[5]||0), +(m[6]||0));
-  m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
-  if (m) return Date.UTC(+m[1], +m[2]-1, +m[3], +(m[4]||0), +(m[5]||0), +(m[6]||0));
-  return null;
-}
-
-const COLS = {
-  id:["idos"], cid:["idcliente"], cliente:["clientes","cliente"], bairro:["bairro"], tecnico:["tecnicos","tecnico"],
-  filial:["filial"], assunto:["asssuntos","assuntos","assunto"], diag:["diagnostico"],
-  abertura:["dataaberturaos","dataabertura"], fechamento:["datafechamentoos","datafechamento"], status:["statusos","status"]
-};
-
-function tableToOs(rows){
-  let h = -1, map = {};
-  for (let i = 0; i < Math.min(rows.length, 15); i++){
-    const names = (rows[i] || []).map(norm);
-    if (names.includes("idcliente") && names.some(n => n.startsWith("dataabertura"))){ h = i;
-      for (const [k, alts] of Object.entries(COLS)){ const j = names.findIndex(n => alts.includes(n)); if (j >= 0) map[k] = j; }
-      break; }
+  function toMs(v){
+    if (v == null || v === "") return null;
+    if (typeof v === "number") return Math.round((v - 25569) * DAY);
+    const s = String(v).trim();
+    let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+    if (m) return Date.UTC(+m[3], +m[2]-1, +m[1], +(m[4]||0), +(m[5]||0), +(m[6]||0));
+    m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+    if (m) return Date.UTC(+m[1], +m[2]-1, +m[3], +(m[4]||0), +(m[5]||0), +(m[6]||0));
+    return null;
   }
-  if (h < 0) throw new Error("Não encontrei as colunas IdCliente e DataAberturaOs no cabeçalho.");
-  const out = []; let skipped = 0;
-  for (let i = h + 1; i < rows.length; i++){
-    const r = rows[i] || [], g = k => map[k] == null ? null : r[map[k]];
-    const cid = g("cid"), ab = toMs(g("abertura"));
-    if (cid == null || cid === "" || ab == null){ skipped++; continue; }   // rodapé / linhas de filtro
-    out.push({
-      id: g("id") != null ? String(g("id")).trim() : null,
-      cid: String(cid).trim(), cliente: String(g("cliente") ?? "").trim(), bairro: String(g("bairro") ?? "").trim(),
-      tecnico: String(g("tecnico") ?? "").trim(), filial: String(g("filial") ?? "").trim(),
-      assunto: String(g("assunto") ?? "").trim() || "(sem assunto)", diag: String(g("diag") ?? "").trim(),
-      status: String(g("status") ?? "").trim(), abertura: ab, fechamento: toMs(g("fechamento")), day: Math.floor(ab / DAY)
+
+  const COLS = {
+    id:["idos"], cid:["idcliente"], cliente:["clientes","cliente"], bairro:["bairro"], tecnico:["tecnicos","tecnico"],
+    filial:["filial"], assunto:["asssuntos","assuntos","assunto"], diag:["diagnostico"],
+    abertura:["dataaberturaos","dataabertura"], fechamento:["datafechamentoos","datafechamento"], status:["statusos","status"]
+  };
+
+  function tableToOs(rows){
+    let h = -1, map = {};
+    for (let i = 0; i < Math.min(rows.length, 15); i++){
+      const names = (rows[i] || []).map(norm);
+      if (names.includes("idcliente") && names.some(n => n.startsWith("dataabertura"))){ h = i;
+        for (const [k, alts] of Object.entries(COLS)){ const j = names.findIndex(n => alts.includes(n)); if (j >= 0) map[k] = j; }
+        break; }
+    }
+    if (h < 0) throw new Error("Não encontrei as colunas IdCliente e DataAberturaOs no cabeçalho.");
+    const out = []; let skipped = 0;
+    for (let i = h + 1; i < rows.length; i++){
+      const r = rows[i] || [], g = k => map[k] == null ? null : r[map[k]];
+      const cid = g("cid"), ab = toMs(g("abertura"));
+      if (cid == null || cid === "" || ab == null){ skipped++; continue; }
+      out.push({
+        id: g("id") != null ? String(g("id")).trim() : null,
+        cid: String(cid).trim(), cliente: String(g("cliente") ?? "").trim(), bairro: String(g("bairro") ?? "").trim(),
+        tecnico: String(g("tecnico") ?? "").trim(), filial: String(g("filial") ?? "").trim(),
+        assunto: String(g("assunto") ?? "").trim() || "(sem assunto)", diag: String(g("diag") ?? "").trim(),
+        status: String(g("status") ?? "").trim(), abertura: ab, fechamento: toMs(g("fechamento")), day: Math.floor(ab / DAY)
+      });
+    }
+    return {out, skipped};
+  }
+
+  const S = { all: [], files: [], subjects: new Map(), sel: new Set(), sortKey: "n", sortAsc: false, result: [], open: new Set(), subjInit: false, view: "rec" };
+
+  const fmtDay = d => { const t = new Date(d * DAY); return `${String(t.getUTCDate()).padStart(2,"0")}/${String(t.getUTCMonth()+1).padStart(2,"0")}/${t.getUTCFullYear()}`; };
+  const fmtDT = ms => { if (ms == null) return "—"; const t = new Date(ms); return fmtDay(Math.floor(ms/DAY)) + ` ${String(t.getUTCHours()).padStart(2,"0")}:${String(t.getUTCMinutes()).padStart(2,"0")}`; };
+  const iso = d => new Date(d * DAY).toISOString().slice(0, 10);
+  const isoToDay = s => s ? Math.floor(Date.parse(s + "T00:00:00Z") / DAY) : null;
+  const isPos = a => /P[ÓO]S-?\s?VENDA/i.test(a);
+  const isRep = a => /^REPARO|^TECNICO|^SUPORTE/i.test(a.normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
+
+  const drop = $("drop"), fileIn = $("file");
+  drop.onclick = () => fileIn.click();
+  drop.onkeydown = e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); fileIn.click(); } };
+  ["dragenter","dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave","drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", e => load([...e.dataTransfer.files]));
+  fileIn.onchange = () => { load([...fileIn.files]); fileIn.value = ""; };
+
+  async function load(list){
+    const msg = $("msg"); msg.className = "msg"; msg.textContent = "Lendo…";
+    const errs = [];
+    for (const f of list){
+      try {
+        const rows = /\.csv$/i.test(f.name) ? readCsv(await f.text()) : await readXlsx(await f.arrayBuffer());
+        const {out, skipped} = tableToOs(rows);
+        S.files.push({name: f.name, n: out.length, skipped, rows: out});
+      } catch(e){ errs.push(`${f.name}: ${e.message}`); }
+    }
+    rebuild();
+    if (errs.length){ msg.className = "msg err"; msg.textContent = errs.join(" | "); }
+    else msg.textContent = "";
+  }
+
+  function rebuild(){
+    const seen = new Set(), all = []; let dups = 0;
+    for (const f of S.files) for (const r of f.rows){
+      const key = r.id ? "o" + r.id : null;
+      if (key && seen.has(key)){ dups++; continue; }
+      if (key) seen.add(key); all.push(r);
+    }
+    S.all = all;
+    $("files").innerHTML = S.files.map((f, i) =>
+      `<span class="tag">${esc(f.name)} · ${f.n} OS<button data-i="${i}" title="Remover" aria-label="Remover ${esc(f.name)}">✕</button></span>`).join("");
+    $("files").querySelectorAll("button").forEach(b => b.onclick = () => { S.files.splice(+b.dataset.i, 1); S.subjInit = false; rebuild(); });
+    if (!all.length){ $("app").classList.add("hidden"); return; }
+    $("app").classList.remove("hidden");
+    if (dups){ $("msg").textContent = `${dups} OS repetidas (mesmo IdOs) foram ignoradas.`; }
+
+    const days = all.map(r => r.day), mn = Math.min(...days), mx = Math.max(...days);
+    $("from").value = iso(mn); $("to").value = iso(mx);
+    const months = [...new Set(all.map(r => iso(r.day).slice(0, 7)))].sort();
+    $("month").innerHTML = `<option value="">—</option>` + months.map(m => `<option>${m}</option>`).join("");
+    const fil = [...new Set(all.map(r => r.filial).filter(Boolean))].sort();
+    $("filial").innerHTML = `<option value="">Todas</option>` + fil.map(f => `<option>${esc(f)}</option>`).join("");
+    S.subjects = new Map();
+    all.forEach(r => S.subjects.set(r.assunto, (S.subjects.get(r.assunto) || 0) + 1));
+    if (!S.subjInit){ S.sel = new Set([...S.subjects.keys()].filter(a => !isPos(a))); S.subjInit = true; }
+    renderChips(); run();
+  }
+
+  function renderChips(){
+    const list = [...S.subjects].sort((a, b) => b[1] - a[1]);
+    $("chips").innerHTML = list.map(([a, n], i) =>
+      `<label class="chip ${S.sel.has(a) ? "on" : ""}"><input type="checkbox" data-a="${i}" ${S.sel.has(a) ? "checked" : ""}>${esc(a)} <small>${n}</small></label>`).join("");
+    $("chips").querySelectorAll("input").forEach(inp => inp.onchange = () => {
+      const a = list[+inp.dataset.a][0]; inp.checked ? S.sel.add(a) : S.sel.delete(a);
+      inp.parentElement.classList.toggle("on", inp.checked); run();
+    });
+    $("subjCount").textContent = `${S.sel.size} de ${S.subjects.size}`;
+  }
+  const setSel = fn => { S.sel = new Set([...S.subjects.keys()].filter(fn)); renderChips(); run(); };
+  $("subjAll").onclick = () => setSel(() => true);
+  $("subjNone").onclick = () => setSel(() => false);
+  $("subjNoPos").onclick = () => setSel(a => !isPos(a));
+  $("subjRep").onclick = () => setSel(a => isRep(a) && !isPos(a));
+
+  $("month").onchange = e => {
+    const m = e.target.value; if (!m) return;
+    const [y, mo] = m.split("-").map(Number);
+    $("from").value = iso(Date.UTC(y, mo - 1, 1) / DAY);
+    $("to").value = iso(Date.UTC(y, mo, 0) / DAY);
+    run();
+  };
+  ["from","to","win","minos","filial"].forEach(id => $(id).addEventListener("input", () => { if (id === "from" || id === "to") $("month").value = ""; run(); }));
+  $("q").addEventListener("input", run);
+
+  function analyze(){
+    const from = isoToDay($("from").value), to = isoToDay($("to").value);
+    const win = Math.max(1, +$("win").value || 30), minOs = Math.max(2, +$("minos").value || 2), fil = $("filial").value;
+    const groups = new Map(); let osInRange = 0;
+    for (const r of S.all){
+      if (from != null && r.day < from) continue;
+      if (to != null && r.day > to) continue;
+      if (fil && r.filial !== fil) continue;
+      if (!S.sel.has(r.assunto)) continue;
+      osInRange++;
+      if (!groups.has(r.cid)) groups.set(r.cid, []);
+      groups.get(r.cid).push(r);
+    }
+    const res = [], all = [];
+    for (const [cid, list] of groups){
+      list.sort((a, b) => a.abertura - b.abertura || (+a.id || 0) - (+b.id || 0));
+      const gaps = list.map((r, i) => i ? r.day - list[i-1].day : null);
+      const hit = list.map((_, i) => (i > 0 && gaps[i] < win) || (i < list.length - 1 && gaps[i+1] < win));
+      const n = hit.filter(Boolean).length;
+      const near = gaps.filter(g => g != null && g < win);
+      const fi = hit.indexOf(true), li = hit.lastIndexOf(true);
+      const e = { cid, cliente: list[0].cliente, bairro: list[0].bairro, filial: list[0].filial, list, gaps, hit, n, total: list.length,
+        minGap: near.length ? Math.min(...near) : null, first: fi >= 0 ? list[fi].day : null, last: li >= 0 ? list[li].day : null, rec: n >= minOs };
+      all.push(e); if (e.rec) res.push(e);
+    }
+    return {res, all, osInRange, clients: groups.size, win, from, to};
+  }
+
+  const VIEWS = {rec: "rec", pct: "rec", oshit: "oshit", allc: "allc", allos: "allos"};
+  function run(){
+    const A = analyze(); S.A = A;
+    const q = $("q").value.trim().toLowerCase(), v = S.view, wide = v === "allc" || v === "allos";
+    let res = (wide ? A.all : A.res).filter(c => !q || c.cliente.toLowerCase().includes(q) || c.cid.includes(q));
+    const k = S.sortKey, dir = S.sortAsc ? 1 : -1;
+    res.sort((a, b) => { const x = a[k] ?? -1, y = b[k] ?? -1; return (typeof x === "string" ? x.localeCompare(y, "pt-BR") : x - y) * dir || a.cliente.localeCompare(b.cliente, "pt-BR"); });
+    S.result = res;
+    const osHit = A.res.reduce((s, c) => s + c.n, 0), pct = A.clients ? (A.res.length / A.clients * 100) : 0;
+    $("subjCount").textContent = `${S.sel.size} de ${S.subjects.size}`;
+    $("kpis").innerHTML = [
+      ["rec", A.res.length, "clientes com OS recorrentes"],
+      ["oshit", osHit, "OS envolvidas na recorrência"],
+      ["allc", A.clients, "clientes com OS no filtro"],
+      ["pct", pct.toFixed(1).replace(".", ",") + "%", "% de clientes recorrentes"],
+      ["allos", A.osInRange, "OS no período/filtro"],
+    ].map(([id, val, l]) => `<button type="button" class="kpi ${VIEWS[id] === v && (id === v || (v === "rec" && id !== "pct")) ? "active" : ""}" data-v="${id}"><b>${val}</b><span>${l}</span></button>`).join("");
+    $("kpis").querySelectorAll(".kpi").forEach(b => b.onclick = () => { S.view = VIEWS[b.dataset.v]; S.open = new Set(); $("expand").textContent = "Expandir todos"; run(); });
+    const titles = {
+      rec: `Clientes com 2+ OS em menos de ${A.win} dias (${res.length})`,
+      oshit: `OS envolvidas na recorrência (${res.reduce((s, c) => s + c.n, 0)} OS de ${res.length} clientes)`,
+      allc: `Todos os clientes com OS no filtro (${res.length})`,
+      allos: `Todas as OS no período/filtro (${res.reduce((s, c) => s + c.total, 0)})`
+    };
+    $("tableTitle").textContent = titles[v];
+    $("expand").classList.toggle("hidden", v === "oshit" || v === "allos");
+    if (v === "oshit" || v === "allos") renderFlat(res, v === "oshit"); else renderTable(res);
+  }
+
+  function renderFlat(res, onlyHit){
+    const head = `<thead><tr><th>Cliente</th><th>Bairro</th><th>Filial</th><th>IdOs</th><th>Abertura</th><th class="num">Dias desde a anterior</th><th>Assunto</th><th>Diagnóstico</th><th>Técnico</th></tr></thead>`;
+    const rows = [];
+    for (const c of res) c.list.forEach((r, i) => {
+      if (onlyHit && !c.hit[i]) return;
+      rows.push(`<tr class="${c.hit[i] ? "hit" : "dim"}"><td><b>${esc(c.cliente)}</b><br><span class="muted">ID ${esc(c.cid)}</span></td><td>${esc(c.bairro)}</td><td>${esc(c.filial)}</td>
+        <td>${esc(r.id)}</td><td>${fmtDT(r.abertura)}</td><td class="num ${c.gaps[i] != null && c.gaps[i] < S.A.win ? "gap" : ""}" style="padding-right:28px">${c.gaps[i] == null ? "—" : c.gaps[i]}</td>
+        <td>${esc(r.assunto)}</td><td>${esc(r.diag)}</td><td>${esc(r.tecnico)}</td></tr>`);
+    });
+    $("tbl").innerHTML = head + "<tbody>" + (rows.join("") || `<tr><td colspan="9" class="empty">Nenhuma OS encontrada com esses filtros.</td></tr>`) + "</tbody>";
+  }
+
+  const HEAD = [["cliente","Cliente"],["bairro","Bairro"],["filial","Filial"],["n","OS na janela","num"],["total","OS no período","num"],["minGap","Menor intervalo (dias)","num"],["last","Última recorrência"]];
+  function renderTable(res){
+    const head = `<thead><tr><th style="width:24px"></th>${HEAD.map(([k, l, c]) => `<th data-k="${k}" class="${c||""} ${S.sortKey===k ? "sorted" + (S.sortAsc ? " asc" : "") : ""}">${l}</th>`).join("")}</tr></thead>`;
+    if (!res.length){ $("tbl").innerHTML = head + `<tbody><tr><td colspan="8" class="empty">Nenhum cliente encontrado com esses filtros.</td></tr></tbody>`; bindHead(); return; }
+    $("tbl").innerHTML = head + "<tbody>" + res.map(c => {
+      const open = S.open.has(c.cid);
+      return `<tr class="main ${open ? "open" : ""}" data-c="${esc(c.cid)}"><td><span class="caret">▶</span></td>
+        <td><b>${esc(c.cliente)}</b><br><span class="muted">ID ${esc(c.cid)}</span></td><td>${esc(c.bairro)}</td><td>${esc(c.filial)}</td>
+        <td class="num">${c.rec ? `<span class="pill">${c.n}</span>` : c.n}</td><td class="num">${c.total}</td><td class="num">${c.minGap ?? "—"}</td><td>${c.last != null ? fmtDay(c.last) : "—"}</td></tr>` +
+        (open ? `<tr class="detail"><td colspan="8">${detail(c)}</td></tr>` : "");
+    }).join("") + "</tbody>";
+    bindHead();
+    $("tbl").querySelectorAll("tr.main").forEach(tr => tr.onclick = () => { const c = tr.dataset.c; S.open.has(c) ? S.open.delete(c) : S.open.add(c); renderTable(S.result); });
+  }
+  function detail(c){
+    return `<div class="inner"><table><thead><tr><th>IdOs</th><th>Abertura</th><th class="num">Dias desde a anterior</th><th>Assunto</th><th>Diagnóstico</th><th>Técnico</th><th>Fechamento</th></tr></thead><tbody>` +
+      c.list.map((r, i) => `<tr class="${c.hit[i] ? "hit" : "dim"}"><td>${esc(r.id)}</td><td>${fmtDT(r.abertura)}</td>
+        <td class="num ${c.gaps[i] != null && c.gaps[i] < S.A.win ? "gap" : ""}">${c.gaps[i] == null ? "—" : c.gaps[i]}</td><td>${esc(r.assunto)}</td><td>${esc(r.diag)}</td><td>${esc(r.tecnico)}</td><td>${fmtDT(r.fechamento)}</td></tr>`).join("") +
+      `</tbody></table><p class="rule" style="margin:8px 0 0">Linhas em destaque = OS dentro da regra. Linhas apagadas = OS do cliente no período que não entram na regra.</p></div>`;
+  }
+  function bindHead(){
+    $("tbl").querySelectorAll("thead th[data-k]").forEach(th => th.onclick = () => {
+      const k = th.dataset.k; if (S.sortKey === k) S.sortAsc = !S.sortAsc; else { S.sortKey = k; S.sortAsc = ["cliente","bairro","filial"].includes(k); }
+      run();
     });
   }
-  return {out, skipped};
-}
+  $("expand").onclick = () => {
+    const all = S.result.every(c => S.open.has(c.cid));
+    S.open = all ? new Set() : new Set(S.result.map(c => c.cid));
+    $("expand").textContent = all ? "Expandir todos" : "Recolher todos"; renderTable(S.result);
+  };
 
-/* ================= Estado ================= */
-const S = { all: [], files: [], subjects: new Map(), sel: new Set(), sortKey: "n", sortAsc: false, result: [], open: new Set(), subjInit: false };
+  $("export").onclick = () => {
+    if (!S.result.length) return;
+    const cell = v => { v = String(v ?? ""); return /[";\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    const lines = [["IdCliente","Cliente","Bairro","Filial","OS na janela","OS no período","IdOs","Abertura","Dias desde a anterior","Assunto","Diagnóstico","Técnico","Fechamento","Dentro da regra"]];
+    for (const c of S.result) c.list.forEach((r, i) => lines.push([c.cid, c.cliente, c.bairro, c.filial, c.n, c.total, r.id, fmtDT(r.abertura), c.gaps[i] ?? "", r.assunto, r.diag, r.tecnico, fmtDT(r.fechamento), c.hit[i] ? "Sim" : "Não"]));
+    const blob = new Blob(["﻿" + lines.map(l => l.map(cell).join(";")).join("\r\n")], {type: "text/csv;charset=utf-8"});
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+    a.download = `os_recorrentes_${$("from").value}_a_${$("to").value}.csv`; a.click(); URL.revokeObjectURL(a.href);
+  };
+})();
+</script>
 
-const fmtDay = d => { const t = new Date(d * DAY); return `${String(t.getUTCDate()).padStart(2,"0")}/${String(t.getUTCMonth()+1).padStart(2,"0")}/${t.getUTCFullYear()}`; };
-const fmtDT = ms => { if (ms == null) return "—"; const t = new Date(ms); return fmtDay(Math.floor(ms/DAY)) + ` ${String(t.getUTCHours()).padStart(2,"0")}:${String(t.getUTCMinutes()).padStart(2,"0")}`; };
-const iso = d => new Date(d * DAY).toISOString().slice(0, 10);
-const isoToDay = s => s ? Math.floor(Date.parse(s + "T00:00:00Z") / DAY) : null;
-const isPos = a => /P[ÓO]S-?\s?VENDA/i.test(a);
-const isRep = a => /^REPARO|^TECNICO|^SUPORTE/i.test(a.normalize("NFD").replace(/[̀-ͯ]/g, ""));
+<!-- ==================== TOOL 2 — JS ==================== -->
+<script>
+(function(){
+  /* ========== Configuração ========== */
+  const ADMIN_KEYWORDS_NORM = [
+    'CONTATO POS-VENDA',
+    'ATIVACAO - ATIVACAO DE APPS',
+    'SUPORTE - SUPORTE DE APP REMOTO',
+  ];
+  const ORDEM_PRI = { 'CRÍTICA':1, 'ALTA':2, 'MÉDIA':3, 'BAIXA':4 };
 
-/* ================= Upload ================= */
-const drop = $("drop"), fileIn = $("file");
-drop.onclick = () => fileIn.click();
-drop.onkeydown = e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); fileIn.click(); } };
-["dragenter","dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
-["dragleave","drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
-drop.addEventListener("drop", e => load([...e.dataTransfer.files]));
-fileIn.onchange = () => { load([...fileIn.files]); fileIn.value = ""; };
+  /* ========== Estado ========== */
+  let OS_DATA = [];
+  let AGG = [];
+  let currentRows = [];
+  let activeCardFilter = null;
+  let START_DATE = null;
+  let END_DATE = null;
 
-async function load(list){
-  const msg = $("msg"); msg.className = "msg"; msg.textContent = "Lendo…";
-  const errs = [];
-  for (const f of list){
-    try {
-      const rows = /\.csv$/i.test(f.name) ? readCsv(await f.text()) : await readXlsx(await f.arrayBuffer());
-      const {out, skipped} = tableToOs(rows);
-      S.files.push({name: f.name, n: out.length, skipped, rows: out});
-    } catch(e){ errs.push(`${f.name}: ${e.message}`); }
+  /* ========== Helpers ========== */
+  function norm(s){
+    return (s==null?'':String(s)).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
   }
-  rebuild();
-  if (errs.length){ msg.className = "msg err"; msg.textContent = errs.join(" | "); }
-  else msg.textContent = "";
-}
-
-function rebuild(){
-  const seen = new Set(), all = []; let dups = 0;
-  for (const f of S.files) for (const r of f.rows){
-    const key = r.id ? "o" + r.id : null;
-    if (key && seen.has(key)){ dups++; continue; }
-    if (key) seen.add(key); all.push(r);
+  function isAdminSubject(a){
+    const n = norm(a);
+    if(!n) return false;
+    return ADMIN_KEYWORDS_NORM.some(k => n.includes(k));
   }
-  S.all = all;
-  $("files").innerHTML = S.files.map((f, i) =>
-    `<span class="tag">${esc(f.name)} · ${f.n} OS<button data-i="${i}" title="Remover" aria-label="Remover ${esc(f.name)}">✕</button></span>`).join("");
-  $("files").querySelectorAll("button").forEach(b => b.onclick = () => { S.files.splice(+b.dataset.i, 1); S.subjInit = false; rebuild(); });
-  if (!all.length){ $("app").classList.add("hidden"); return; }
-  $("app").classList.remove("hidden");
-  if (dups){ $("msg").textContent = `${dups} OS repetidas (mesmo IdOs) foram ignoradas.`; }
+  function parseDate(v){
+    if(v==null||v==='') return null;
+    if(v instanceof Date) return isNaN(v.getTime())?null:v;
+    if(typeof v==='number'){
+      const ms = (v - 25569) * 86400 * 1000;
+      const d = new Date(ms);
+      return isNaN(d.getTime())?null:d;
+    }
+    const s = String(v).trim();
+    if(!s) return null;
+    let m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+    if(m) return new Date(+m[1], +m[2]-1, +m[3], +(m[4]||0), +(m[5]||0), +(m[6]||0));
+    m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+    if(m) return new Date(+m[3], +m[2]-1, +m[1], +(m[4]||0), +(m[5]||0), +(m[6]||0));
+    const d = new Date(s);
+    return isNaN(d.getTime())?null:d;
+  }
+  function fmtDate(d){
+    if(!d) return '';
+    const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${dd}`;
+  }
+  function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+  function daysBetween(a,b){
+    if(!a||!b) return null;
+    const ms = new Date(b.getFullYear(),b.getMonth(),b.getDate()) - new Date(a.getFullYear(),a.getMonth(),a.getDate());
+    return Math.round(ms/86400000);
+  }
 
-  // período
-  const days = all.map(r => r.day), mn = Math.min(...days), mx = Math.max(...days);
-  $("from").value = iso(mn); $("to").value = iso(mx);
-  const months = [...new Set(all.map(r => iso(r.day).slice(0, 7)))].sort();
-  $("month").innerHTML = `<option value="">—</option>` + months.map(m => `<option>${m}</option>`).join("");
-  // filiais
-  const fil = [...new Set(all.map(r => r.filial).filter(Boolean))].sort();
-  $("filial").innerHTML = `<option value="">Todas</option>` + fil.map(f => `<option>${esc(f)}</option>`).join("");
-  // assuntos
-  S.subjects = new Map();
-  all.forEach(r => S.subjects.set(r.assunto, (S.subjects.get(r.assunto) || 0) + 1));
-  if (!S.subjInit){ S.sel = new Set([...S.subjects.keys()].filter(a => !isPos(a))); S.subjInit = true; }
-  renderChips(); run();
-}
+  /* ========== Classificação ========== */
+  function classifyPriority(visitas, osQtd){
+    if(visitas>=3 || osQtd>=5) return { pri:'CRÍTICA', prazo:1 };
+    if(visitas===2 || osQtd>=3) return { pri:'ALTA', prazo:2 };
+    if(osQtd===2)                return { pri:'MÉDIA', prazo:4 };
+    return { pri:'BAIXA', prazo:7 };
+  }
+  function classifyRisk(visitas, osQtd, temAgendaFutura){
+    if(visitas>=3 || (osQtd>=3 && !temAgendaFutura)) return 'ALTO';
+    if(visitas>=2 || osQtd>=2) return 'MÉDIO';
+    return 'BAIXO';
+  }
 
-function renderChips(){
-  const list = [...S.subjects].sort((a, b) => b[1] - a[1]);
-  $("chips").innerHTML = list.map(([a, n], i) =>
-    `<label class="chip ${S.sel.has(a) ? "on" : ""}"><input type="checkbox" data-a="${i}" ${S.sel.has(a) ? "checked" : ""}>${esc(a)} <small>${n}</small></label>`).join("");
-  $("chips").querySelectorAll("input").forEach(inp => inp.onchange = () => {
-    const a = list[+inp.dataset.a][0]; inp.checked ? S.sel.add(a) : S.sel.delete(a);
-    inp.parentElement.classList.toggle("on", inp.checked); run();
+  /* ========== Leitura do arquivo ========== */
+  async function loadFile(file){
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type:'array', cellDates:true });
+    const sheetName = wb.SheetNames.includes('Export') ? 'Export' : wb.SheetNames[0];
+    const ws = wb.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval:null, raw:true });
+    return rows.map(r => {
+      const o = {};
+      for(const k of Object.keys(r)) o[String(k).trim()] = r[k];
+      return o;
+    });
+  }
+
+  /* ========== Análise ========== */
+  function analyze(){
+    const startStr = document.getElementById('startDate').value;
+    const endStr = document.getElementById('endDate').value;
+    if(!startStr || !endStr){ alert('Por favor, preencha a Data de Início e a Data de Fim.'); return; }
+    START_DATE = new Date(startStr + 'T00:00:00');
+    END_DATE = new Date(endStr + 'T23:59:59');
+    if(START_DATE > END_DATE){ alert('A Data de Início não pode ser maior que a Data de Fim.'); return; }
+
+    const validas = OS_DATA.filter(r => {
+      const idOs = Number(r['IdOs']);
+      const idCli = Number(r['IdCliente']);
+      if(!idOs || !idCli) return false;
+      const dt = parseDate(r['DataAberturaOs']);
+      if(!dt) return false;
+      return dt >= START_DATE && dt <= END_DATE;
+    });
+
+    const seen = new Map();
+    for(const r of validas) seen.set(Number(r['IdOs']), r);
+    const unicas = Array.from(seen.values());
+
+    const byClient = new Map();
+    for(const r of unicas){
+      const idCli = Number(r['IdCliente']);
+      const dt    = parseDate(r['DataAberturaOs']);
+      const dtAg  = parseDate(r['DataAgendaOs']);
+      const dtFec = parseDate(r['DataFechamentoOs']);
+      const assunto = r['Assuntos'] || '';
+      const isVisita = !isAdminSubject(assunto);
+
+      let c = byClient.get(idCli);
+      if(!c){
+        c = {
+          IdCliente:idCli, Clientes:r['Clientes']||'', Bairro:r['Bairro']||'',
+          osQtd:0, visitas:0,
+          primeiraOS:dt, ultimaOS:dt, ultimoFechamento:null,
+          ultimoAssunto:assunto, ultimoDiagnostico:r['Diagnóstico']||'', ultimoTecnico:r['Técnicos']||'',
+          assuntos:new Set(), tecnicos:new Set(),
+          datasAgenda:[], possuiAgendaFutura:false,
+        };
+        byClient.set(idCli,c);
+      }
+      c.osQtd += 1;
+      if(isVisita) c.visitas += 1;
+      if(dt && (!c.primeiraOS || dt < c.primeiraOS)) c.primeiraOS = dt;
+      if(dt && (!c.ultimaOS || dt > c.ultimaOS)){
+        c.ultimaOS = dt;
+        c.ultimoAssunto = assunto;
+        c.ultimoDiagnostico = r['Diagnóstico']||'';
+        c.ultimoTecnico = r['Técnicos']||'';
+      }
+      if(dtFec && (!c.ultimoFechamento || dtFec > c.ultimoFechamento)) c.ultimoFechamento = dtFec;
+      if(assunto) c.assuntos.add(assunto);
+      if(r['Técnicos']) c.tecnicos.add(r['Técnicos']);
+      if(dtAg){
+        c.datasAgenda.push(dtAg);
+        if(dtAg > END_DATE) c.possuiAgendaFutura = true;
+      }
+    }
+
+    AGG = Array.from(byClient.values()).map(c => {
+      const { pri, prazo } = classifyPriority(c.visitas, c.osQtd);
+      const risco = classifyRisk(c.visitas, c.osQtd, c.possuiAgendaFutura);
+      const dataLimite = addDays(END_DATE, prazo);
+      return {
+        ...c,
+        prioridade:pri, prazo, risco,
+        diasDesdeUltima: c.ultimaOS ? daysBetween(c.ultimaOS, END_DATE) : null,
+        dataLimite: fmtDate(dataLimite),
+        statusAgenda: c.possuiAgendaFutura ? 'CONFIRMAR' : 'AGENDAR',
+        acao: c.possuiAgendaFutura
+          ? 'Confirmar agenda existente e ligar para evitar cancelamento'
+          : 'Agendar visita e confirmar com o cliente',
+        ordem: ORDEM_PRI[pri],
+        assuntosStr: Array.from(c.assuntos).sort().join('; '),
+        tecnicosStr: Array.from(c.tecnicos).sort().join('; '),
+        datasAgendaStr: Array.from(new Set(c.datasAgenda.map(fmtDate))).sort().join('; '),
+      };
+    });
+
+    const recorrentes = AGG.filter(c => c.osQtd > 1).sort((a,b) =>
+      a.ordem - b.ordem || b.visitas - a.visitas || b.osQtd - a.osQtd ||
+      (a.diasDesdeUltima ?? 999) - (b.diasDesdeUltima ?? 999)
+    );
+
+    renderSummary(AGG, recorrentes, unicas.length, byClient.size);
+    applyFilters();
+    document.getElementById('btnExport').disabled = false;
+  }
+
+  /* ========== UI - Resumo e Cards Clicáveis ========== */
+  function renderSummary(all, rec, osCount, clientCount){
+    const pri = { 'CRÍTICA':0,'ALTA':0,'MÉDIA':0,'BAIXA':0 };
+    for(const c of rec) pri[c.prioridade] = (pri[c.prioridade]||0)+1;
+    const withAgenda = rec.filter(c => c.possuiAgendaFutura).length;
+    const visitas2   = rec.filter(c => c.visitas >= 2).length;
+
+    document.getElementById('summary').innerHTML = `
+      <div class="card" data-type="os_analisadas" title="Clique para ver todos os clientes no período">
+        <div class="label">OS analisadas</div>
+        <div class="value">${osCount}</div>
+      </div>
+      <div class="card" data-type="clientes_unicos" title="Clique para ver todos os clientes no período">
+        <div class="label">Clientes únicos</div>
+        <div class="value">${clientCount}</div>
+      </div>
+      <div class="card" data-type="recorrentes" title="Clique para ver apenas clientes com > 1 OS">
+        <div class="label">Clientes recorrentes</div>
+        <div class="value">${rec.length}</div>
+      </div>
+      <div class="card" data-type="visitas_2" title="Clique para filtrar por clientes com 2 ou mais visitas">
+        <div class="label">Com ≥2 visitas técnicas</div>
+        <div class="value">${visitas2}</div>
+      </div>
+      <div class="card critical" data-type="pri_critica" title="Clique para filtrar Prioridade Crítica">
+        <div class="label">Prioridade crítica</div>
+        <div class="value">${pri['CRÍTICA']}</div>
+      </div>
+      <div class="card high" data-type="pri_alta" title="Clique para filtrar Prioridade Alta">
+        <div class="label">Prioridade alta</div>
+        <div class="value">${pri['ALTA']}</div>
+      </div>
+      <div class="card medium" data-type="pri_media" title="Clique para filtrar Prioridade Média">
+        <div class="label">Prioridade média</div>
+        <div class="value">${pri['MÉDIA']}</div>
+      </div>
+      <div class="card low" data-type="agenda_futura" title="Clique para filtrar clientes que já têm agendamento">
+        <div class="label">Com agenda futura</div>
+        <div class="value">${withAgenda}</div>
+      </div>
+    `;
+
+    document.querySelectorAll('#summary .card').forEach(card => {
+      card.addEventListener('click', () => {
+        const type = card.dataset.type;
+        if(activeCardFilter === type){
+          activeCardFilter = null;
+          card.classList.remove('active');
+        } else {
+          document.querySelectorAll('#summary .card').forEach(c => c.classList.remove('active'));
+          activeCardFilter = type;
+          card.classList.add('active');
+        }
+        applyFilters();
+      });
+    });
+
+    document.getElementById('refInfo').innerHTML =
+      `📅 Período Analisado: <b>${fmtDate(START_DATE).split('-').reverse().join('/')}</b> até <b>${fmtDate(END_DATE).split('-').reverse().join('/')}</b>`;
+  }
+
+  /* ========== Balão de Sinalização (Pill) ========== */
+  const CARD_LABELS = {
+    'os_analisadas': 'OS Analisadas',
+    'clientes_unicos': 'Clientes Únicos',
+    'recorrentes': 'Clientes Recorrentes',
+    'visitas_2': 'Com ≥2 Visitas Técnicas',
+    'pri_critica': 'Prioridade Crítica',
+    'pri_alta': 'Prioridade Alta',
+    'pri_media': 'Prioridade Média',
+    'agenda_futura': 'Com Agenda Futura'
+  };
+
+  function clearCardFilter(){
+    activeCardFilter = null;
+    document.querySelectorAll('#summary .card').forEach(c => c.classList.remove('active'));
+    applyFilters();
+  }
+
+  function updatePill() {
+    const container = document.getElementById('filterPillContainer');
+    if (!activeCardFilter) { container.innerHTML = ''; return; }
+    const label = CARD_LABELS[activeCardFilter] || activeCardFilter;
+    container.innerHTML = `
+      <div class="filter-pill">
+        <span>Mostrando: <b>${label}</b></span>
+        <button class="pill-clear-btn" title="Remover filtro do card">×</button>
+      </div>
+    `;
+    container.querySelector('.pill-clear-btn').addEventListener('click', clearCardFilter);
+  }
+
+  /* ========== Filtros e Tabela ========== */
+  function applyFilters() {
+    if (!AGG || AGG.length === 0) return;
+
+    let rows = (activeCardFilter === 'os_analisadas' || activeCardFilter === 'clientes_unicos') 
+      ? AGG 
+      : AGG.filter(c => c.osQtd > 1);
+
+    if (activeCardFilter === 'visitas_2') {
+      rows = rows.filter(c => c.visitas >= 2);
+    } else if (activeCardFilter === 'pri_critica') {
+      rows = rows.filter(c => c.prioridade === 'CRÍTICA');
+    } else if (activeCardFilter === 'pri_alta') {
+      rows = rows.filter(c => c.prioridade === 'ALTA');
+    } else if (activeCardFilter === 'pri_media') {
+      rows = rows.filter(c => c.prioridade === 'MÉDIA');
+    } else if (activeCardFilter === 'agenda_futura') {
+      rows = rows.filter(c => c.possuiAgendaFutura);
+    }
+
+    const pri = document.getElementById('filterPri').value;
+    const risco = document.getElementById('filterRisco').value;
+    const status = document.getElementById('filterStatus').value;
+    const busca = norm(document.getElementById('search').value);
+
+    rows = rows.filter(r => {
+      if (pri && r.prioridade !== pri) return false;
+      if (risco && r.risco !== risco) return false;
+      if (status && r.statusAgenda !== status) return false;
+      if (busca) {
+        const hay = norm(`${r.Clientes} ${r.Bairro} ${r.IdCliente} ${r.assuntosStr}`);
+        if (!hay.includes(busca)) return false;
+      }
+      return true;
+    });
+
+    renderTableBody(rows);
+    updatePill();
+  }
+
+  function renderTableBody(rows) {
+    currentRows = rows;
+    const tbody = document.getElementById('tbody');
+    if (rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="13" class="empty">Nenhum cliente encontrado com os filtros atuais.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td><span class="badge ${r.prioridade}">${r.prioridade}</span></td>
+        <td><span class="status-pill ${r.statusAgenda==='CONFIRMAR'?'has':'no'}">${r.statusAgenda}</span></td>
+        <td>${r.dataLimite}</td>
+        <td>${r.Clientes}</td>
+        <td>${r.Bairro}</td>
+        <td style="text-align:center"><b>${r.osQtd}</b></td>
+        <td style="text-align:center"><b>${r.visitas}</b></td>
+        <td>${r.ultimaOS ? fmtDate(r.ultimaOS) : ''}</td>
+        <td>${r.ultimoAssunto || ''}</td>
+        <td>${r.tecnicosStr || ''}</td>
+        <td><span class="badge ${r.risco.toLowerCase()}">${r.risco}</span></td>
+        <td><input type="date" class="plano-data" data-id="${r.IdCliente}"></td>
+        <td><input type="text" class="plano-obs"  data-id="${r.IdCliente}" placeholder="Observação..."></td>
+      </tr>
+    `).join('');
+  }
+
+  /* ========== Exportar ========== */
+  function exportXlsx(){
+    const rows = currentRows;
+    if(rows.length === 0){ alert('Não há dados para exportar com os filtros atuais.'); return; }
+    const planData = new Map();
+    const planObs  = new Map();
+    document.querySelectorAll('.plano-data').forEach(i => planData.set(i.dataset.id, i.value));
+    document.querySelectorAll('.plano-obs') .forEach(i => planObs .set(i.dataset.id, i.value));
+
+    const dados = rows.map(r => ({
+      'Prioridade'          : r.prioridade,
+      'Status Agenda'       : r.statusAgenda,
+      'Data Limite Contato' : r.dataLimite,
+      'Data Planejada'      : planData.get(String(r.IdCliente)) || '',
+      'IdCliente'           : r.IdCliente,
+      'Cliente'             : r.Clientes,
+      'Bairro'              : r.Bairro,
+      'Qtde OS'             : r.osQtd,
+      'Qtde Visitas'        : r.visitas,
+      'Primeira OS'         : r.primeiraOS ? fmtDate(r.primeiraOS) : '',
+      'Última OS'           : r.ultimaOS   ? fmtDate(r.ultimaOS)   : '',
+      'Dias Desde Última'   : r.diasDesdeUltima,
+      'Último Assunto'      : r.ultimoAssunto,
+      'Último Diagnóstico'  : r.ultimoDiagnostico,
+      'Técnicos'            : r.tecnicosStr,
+      'Assuntos (todos)'    : r.assuntosStr,
+      'Datas Agenda'        : r.datasAgendaStr,
+      'Agenda Futura'       : r.possuiAgendaFutura ? 'SIM' : 'NÃO',
+      'Risco Cancelamento'  : r.risco,
+      'Ação Sugerida'       : r.acao,
+      'Observação'          : planObs.get(String(r.IdCliente)) || '',
+    }));
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(dados);
+    ws['!cols'] = [
+      {wch:10},{wch:12},{wch:14},{wch:14},{wch:10},{wch:30},{wch:25},
+      {wch:10},{wch:12},{wch:12},{wch:12},{wch:10},{wch:30},{wch:35},
+      {wch:25},{wch:35},{wch:20},{wch:12},{wch:14},{wch:40},{wch:30},
+    ];
+    XLSX.utils.book_append_sheet(wb, ws, 'Agenda_Sugerida');
+    const nameStr = `${fmtDate(START_DATE)}_a_${fmtDate(END_DATE)}`;
+    XLSX.writeFile(wb, `agenda_recorrentes_${nameStr}.xlsx`);
+  }
+
+  /* ========== Inicialização ========== */
+  const today = new Date();
+  const past30 = new Date();
+  past30.setDate(today.getDate() - 30);
+  document.getElementById('endDate').value = fmtDate(today);
+  document.getElementById('startDate').value = fmtDate(past30);
+
+  const fileInput = document.getElementById('fileInput');
+  const btnAnalyze = document.getElementById('btnAnalyze');
+
+  fileInput.addEventListener('change', async (e) => {
+    const f = e.target.files[0];
+    if(!f) return;
+    try{
+      OS_DATA = await loadFile(f);
+      btnAnalyze.disabled = false;
+      document.getElementById('tbody').innerHTML =
+        `<tr><td colspan="13" class="empty">Arquivo carregado (${OS_DATA.length} linhas). Clique em <b>Analisar</b>.</td></tr>`;
+    }catch(err){
+      alert('Erro ao ler o arquivo: ' + err.message);
+    }
   });
-  $("subjCount").textContent = `${S.sel.size} de ${S.subjects.size}`;
-}
-const setSel = fn => { S.sel = new Set([...S.subjects.keys()].filter(fn)); renderChips(); run(); };
-$("subjAll").onclick = () => setSel(() => true);
-$("subjNone").onclick = () => setSel(() => false);
-$("subjNoPos").onclick = () => setSel(a => !isPos(a));
-$("subjRep").onclick = () => setSel(a => isRep(a) && !isPos(a));
 
-$("month").onchange = e => {
-  const m = e.target.value; if (!m) return;
-  const [y, mo] = m.split("-").map(Number);
-  $("from").value = iso(Date.UTC(y, mo - 1, 1) / DAY);
-  $("to").value = iso(Date.UTC(y, mo, 0) / DAY);
-  run();
-};
-["from","to","win","minos","filial"].forEach(id => $(id).addEventListener("input", () => { if (id === "from" || id === "to") $("month").value = ""; run(); }));
-$("q").addEventListener("input", run);
-
-/* ================= Análise ================= */
-function analyze(){
-  const from = isoToDay($("from").value), to = isoToDay($("to").value);
-  const win = Math.max(1, +$("win").value || 30), minOs = Math.max(2, +$("minos").value || 2), fil = $("filial").value;
-  const groups = new Map(); let osInRange = 0;
-  for (const r of S.all){
-    if (from != null && r.day < from) continue;
-    if (to != null && r.day > to) continue;
-    if (fil && r.filial !== fil) continue;
-    if (!S.sel.has(r.assunto)) continue;
-    osInRange++;
-    if (!groups.has(r.cid)) groups.set(r.cid, []);
-    groups.get(r.cid).push(r);
-  }
-  const res = [];
-  for (const [cid, list] of groups){
-    list.sort((a, b) => a.abertura - b.abertura || (+a.id || 0) - (+b.id || 0));
-    const gaps = list.map((r, i) => i ? r.day - list[i-1].day : null);
-    const hit = list.map((_, i) => (i > 0 && gaps[i] < win) || (i < list.length - 1 && gaps[i+1] < win));
-    const n = hit.filter(Boolean).length;
-    if (n < minOs) continue;
-    const near = gaps.filter(g => g != null && g < win);
-    res.push({ cid, cliente: list[0].cliente, bairro: list[0].bairro, filial: list[0].filial, list, gaps, hit, n, total: list.length,
-      minGap: Math.min(...near), first: list.find((_, i) => hit[i]).day, last: [...list].reverse().find((_, i) => hit[list.length - 1 - i]).day });
-  }
-  return {res, osInRange, clients: groups.size, win, from, to};
-}
-
-function run(){
-  const A = analyze(); S.A = A;
-  const q = $("q").value.trim().toLowerCase();
-  let res = A.res.filter(c => !q || c.cliente.toLowerCase().includes(q) || c.cid.includes(q));
-  const k = S.sortKey, dir = S.sortAsc ? 1 : -1;
-  res.sort((a, b) => { const x = a[k], y = b[k]; return (typeof x === "string" ? x.localeCompare(y, "pt-BR") : x - y) * dir || a.cliente.localeCompare(b.cliente, "pt-BR"); });
-  S.result = res;
-  const osHit = res.reduce((s, c) => s + c.n, 0), pct = A.clients ? (A.res.length / A.clients * 100) : 0;
-  $("subjCount").textContent = `${S.sel.size} de ${S.subjects.size}`;
-  $("kpis").innerHTML = [
-    [A.res.length, "clientes com OS recorrentes"],
-    [osHit, "OS envolvidas na recorrência"],
-    [A.clients, "clientes com OS no filtro"],
-    [pct.toFixed(1).replace(".", ",") + "%", "% de clientes recorrentes"],
-    [A.osInRange, "OS no período/filtro"],
-  ].map(([v, l]) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`).join("");
-  $("tableTitle").textContent = `Clientes com 2+ OS em menos de ${A.win} dias (${res.length})`;
-  renderTable(res);
-}
-
-const HEAD = [["cliente","Cliente"],["bairro","Bairro"],["filial","Filial"],["n","OS na janela","num"],["total","OS no período","num"],["minGap","Menor intervalo (dias)","num"],["last","Última recorrência"]];
-function renderTable(res){
-  const head = `<thead><tr><th style="width:24px"></th>${HEAD.map(([k, l, c]) => `<th data-k="${k}" class="${c||""} ${S.sortKey===k ? "sorted" + (S.sortAsc ? " asc" : "") : ""}">${l}</th>`).join("")}</tr></thead>`;
-  if (!res.length){ $("tbl").innerHTML = head + `<tbody><tr><td colspan="8" class="empty">Nenhum cliente encontrado com esses filtros.</td></tr></tbody>`; bindHead(); return; }
-  $("tbl").innerHTML = head + "<tbody>" + res.map(c => {
-    const open = S.open.has(c.cid);
-    return `<tr class="main ${open ? "open" : ""}" data-c="${esc(c.cid)}"><td><span class="caret">▶</span></td>
-      <td><b>${esc(c.cliente)}</b><br><span class="muted">ID ${esc(c.cid)}</span></td><td>${esc(c.bairro)}</td><td>${esc(c.filial)}</td>
-      <td class="num"><span class="pill">${c.n}</span></td><td class="num">${c.total}</td><td class="num">${c.minGap}</td><td>${fmtDay(c.last)}</td></tr>` +
-      (open ? `<tr class="detail"><td colspan="8">${detail(c)}</td></tr>` : "");
-  }).join("") + "</tbody>";
-  bindHead();
-  $("tbl").querySelectorAll("tr.main").forEach(tr => tr.onclick = () => { const c = tr.dataset.c; S.open.has(c) ? S.open.delete(c) : S.open.add(c); renderTable(S.result); });
-}
-function detail(c){
-  return `<div class="inner"><table><thead><tr><th>IdOs</th><th>Abertura</th><th class="num">Dias desde a anterior</th><th>Assunto</th><th>Diagnóstico</th><th>Técnico</th><th>Fechamento</th></tr></thead><tbody>` +
-    c.list.map((r, i) => `<tr class="${c.hit[i] ? "hit" : "dim"}"><td>${esc(r.id)}</td><td>${fmtDT(r.abertura)}</td>
-      <td class="num gap">${c.gaps[i] == null ? "—" : c.gaps[i]}</td><td>${esc(r.assunto)}</td><td>${esc(r.diag)}</td><td>${esc(r.tecnico)}</td><td>${fmtDT(r.fechamento)}</td></tr>`).join("") +
-    `</tbody></table><p class="rule" style="margin:8px 0 0">Linhas em destaque = OS dentro da regra. Linhas apagadas = OS do cliente no período que não entram na regra.</p></div>`;
-}
-function bindHead(){
-  $("tbl").querySelectorAll("thead th[data-k]").forEach(th => th.onclick = () => {
-    const k = th.dataset.k; if (S.sortKey === k) S.sortAsc = !S.sortAsc; else { S.sortKey = k; S.sortAsc = ["cliente","bairro","filial"].includes(k); }
-    run();
+  btnAnalyze.addEventListener('click', () => {
+    try{ analyze(); }
+    catch(err){ alert('Erro ao analisar: ' + err.message); }
   });
-}
-$("expand").onclick = () => {
-  const all = S.result.every(c => S.open.has(c.cid));
-  S.open = all ? new Set() : new Set(S.result.map(c => c.cid));
-  $("expand").textContent = all ? "Expandir todos" : "Recolher todos"; renderTable(S.result);
-};
 
-/* ================= Exportar ================= */
-$("export").onclick = () => {
-  if (!S.result.length) return;
-  const cell = v => { v = String(v ?? ""); return /[";\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
-  const lines = [["IdCliente","Cliente","Bairro","Filial","OS na janela","OS no período","IdOs","Abertura","Dias desde a anterior","Assunto","Diagnóstico","Técnico","Fechamento","Dentro da regra"]];
-  for (const c of S.result) c.list.forEach((r, i) => lines.push([c.cid, c.cliente, c.bairro, c.filial, c.n, c.total, r.id, fmtDT(r.abertura), c.gaps[i] ?? "", r.assunto, r.diag, r.tecnico, fmtDT(r.fechamento), c.hit[i] ? "Sim" : "Não"]));
-  const blob = new Blob(["﻿" + lines.map(l => l.map(cell).join(";")).join("\r\n")], {type: "text/csv;charset=utf-8"});
-  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-  a.download = `os_recorrentes_${$("from").value}_a_${$("to").value}.csv`; a.click(); URL.revokeObjectURL(a.href);
-};
+  document.getElementById('btnExport').addEventListener('click', exportXlsx);
+
+  ['filterPri','filterRisco','filterStatus','search'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => {
+      if (AGG.length) applyFilters();
+    });
+  });
+})();
 </script>
 </body>
 </html>
