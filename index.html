@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Análise de OS — Cyber Data HUD</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg-base: #040810;
+    --bg-panel: rgba(10, 16, 30, 0.65); /* Mais transparente para ver o fundo */
+    --border-tech: rgba(0, 243, 255, 0.25);
+    --cyan: #00f3ff;
+    --cyan-dim: #0088a8;
+    --purple: #b900ff;
+    --text-main: #e2e8f0;
+    --text-muted: #94a3b8;
+    
+    --critical: #ff2a55;
+    --high: #ff8c00;
+    --medium: #ffd700;
+    --low: #00ff88;
+    
+    --glow-cyan: 0 0 10px rgba(0, 243, 255, 0.4), 0 0 20px rgba(0, 243, 255, 0.1);
+    --glow-purple: 0 0 10px rgba(185, 0, 255, 0.4), 0 0 20px rgba(185, 0, 255, 0.1);
+  }
+
+  * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+
+  body {
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-base);
+    color: var(--text-main);
+    line-height: 1.5;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* CANVAS DO FUNDO INTERATIVO */
+  #bgCanvas {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    z-index: -1; /* Fica atrás de tudo */
+    background: radial-gradient(circle at center, #0a1122 0%, var(--bg-base) 100%);
+  }
+
+  /* HEADER */
+  header {
+    background: rgba(4, 8, 16, 0.7);
+    border-bottom: 1px solid var(--border-tech);
+    padding: 24px 40px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    position: relative;
+    z-index: 10;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+  }
+  header h1 {
+    margin: 0 0 6px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    background: linear-gradient(90deg, var(--cyan), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 20px rgba(0, 243, 255, 0.3);
+  }
+  header p { margin: 0; color: var(--cyan-dim); font-size: 13px; font-weight: 500; letter-spacing: 0.5px; }
+
+  main { padding: 30px 40px; max-width: 1800px; margin: 0 auto; position: relative; z-index: 1; }
+
+  /* CONTROLES E INPUTS - Glassmorphism */
+  .controls, .filters {
+    display: flex; flex-wrap: wrap; gap: 16px; align-items: end;
+    background: var(--bg-panel); padding: 20px 24px; border-radius: 8px;
+    border: 1px solid var(--border-tech);
+    box-shadow: inset 0 0 20px rgba(0, 243, 255, 0.03), 0 8px 32px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    margin-bottom: 24px;
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 11px; color: var(--cyan); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+  .field input, .field select {
+    padding: 10px 14px; border: 1px solid rgba(0, 243, 255, 0.2); border-radius: 4px;
+    font-size: 14px; font-family: 'Inter', sans-serif; 
+    background: rgba(0, 0, 0, 0.5); color: #fff;
+    min-width: 160px; transition: all 0.2s ease;
+  }
+  .field input:focus, .field select:focus {
+    outline: none; border-color: var(--cyan); 
+    box-shadow: var(--glow-cyan);
+    background: rgba(0, 243, 255, 0.1);
+  }
+  ::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; opacity: 0.6; }
+  ::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+
+  button {
+    padding: 10px 20px; border: 1px solid var(--cyan); border-radius: 4px;
+    font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+    cursor: pointer; background: rgba(0, 243, 255, 0.1); color: var(--cyan);
+    transition: all 0.2s; font-family: 'Orbitron', sans-serif;
+    position: relative; overflow: hidden;
+  }
+  button:hover:not(:disabled) {
+    background: var(--cyan); color: #000;
+    box-shadow: var(--glow-cyan); transform: translateY(-1px);
+  }
+  button.secondary { border-color: var(--purple); color: var(--purple); background: rgba(185, 0, 255, 0.1); }
+  button.secondary:hover:not(:disabled) { background: var(--purple); color: #fff; box-shadow: var(--glow-purple); }
+  button:disabled { border-color: #334155; color: #475569; background: transparent; cursor: not-allowed; }
+
+  /* CARDS CLICÁVEIS */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .card {
+    background: var(--bg-panel); border-radius: 8px; padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer; position: relative; user-select: none;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    overflow: visible;
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    border-color: var(--border-tech);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 243, 255, 0.15);
+    background: rgba(10, 16, 30, 0.8);
+  }
+  .card.active {
+    border-color: var(--cyan);
+    box-shadow: inset 0 0 20px rgba(0, 243, 255, 0.1), var(--glow-cyan);
+  }
+  .card.active::after {
+    content: 'LOCKED'; position: absolute; top: 12px; right: 12px;
+    font-size: 9px; background: var(--cyan); color: #000; padding: 2px 6px;
+    border-radius: 2px; font-weight: 900; font-family: 'Orbitron', sans-serif;
+    letter-spacing: 1px; animation: pulse 2s infinite;
+  }
+  .card .label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; padding-right: 50px; }
+  .card .value { font-family: 'Orbitron', sans-serif; font-size: 32px; font-weight: 700; color: #fff; line-height: 1; text-shadow: 0 0 10px rgba(255, 255, 255, 0.3); }
+  
+  .card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: #334155; border-radius: 8px 8px 0 0; transition: all 0.3s;
+  }
+  .card:hover::before { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
+  
+  .card.critical::before { background: var(--critical); box-shadow: 0 0 10px var(--critical); }
+  .card.high::before { background: var(--high); box-shadow: 0 0 10px var(--high); }
+  .card.medium::before { background: var(--medium); box-shadow: 0 0 10px var(--medium); }
+  .card.low::before { background: var(--low); box-shadow: 0 0 10px var(--low); }
+
+  /* TOOLTIP CUSTOMIZADO */
+  [data-tooltip] { position: relative; }
+  [data-tooltip]::before {
+    content: attr(data-tooltip);
+    position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%) translateY(15px);
+    background: rgba(4, 8, 16, 0.95); color: var(--cyan);
+    padding: 8px 12px; border-radius: 4px; border: 1px solid var(--cyan);
+    font-size: 11px; font-family: 'Inter', sans-serif; font-weight: 600;
+    white-space: nowrap; opacity: 0; pointer-events: none; z-index: 100;
+    transition: all 0.2s ease; box-shadow: var(--glow-cyan);
+  }
+  [data-tooltip]::after {
+    content: ''; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%) translateY(15px);
+    border-width: 6px; border-style: solid; border-color: var(--cyan) transparent transparent transparent;
+    opacity: 0; pointer-events: none; transition: all 0.2s ease; z-index: 100;
+  }
+  [data-tooltip]:hover::before, [data-tooltip]:hover::after {
+    opacity: 1; transform: translateX(-50%) translateY(0);
+  }
+
+  /* BALÃO DE FILTRO ATIVO */
+  .filter-pill-container { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; min-height: 36px; }
+  .filter-pill {
+    display: inline-flex; align-items: center; gap: 12px; background: rgba(0, 243, 255, 0.15);
+    color: var(--cyan); padding: 8px 16px; border-radius: 4px; font-size: 13px;
+    font-weight: 600; border: 1px solid var(--cyan); box-shadow: var(--glow-cyan);
+    animation: slideDown 0.3s ease-out; backdrop-filter: blur(8px);
+  }
+  .filter-pill button {
+    background: transparent; border: 1px solid var(--cyan); border-radius: 50%; 
+    width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; 
+    padding: 0; font-size: 14px; color: var(--cyan); cursor: pointer; transition: all 0.2s;
+  }
+  .filter-pill button:hover { background: var(--cyan); color: #000; transform: rotate(90deg); }
+
+  /* TABELA - Glassmorphism profundo */
+  .table-wrap {
+    background: var(--bg-panel); border-radius: 8px; overflow: auto;
+    border: 1px solid var(--border-tech); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    max-height: 65vh; backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+  th, td { padding: 14px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); text-align: left; vertical-align: middle; }
+  th {
+    background: rgba(4, 8, 16, 0.85); color: var(--cyan); font-size: 11px;
+    text-transform: uppercase; font-weight: 700; letter-spacing: 1px;
+    position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border-tech);
+    backdrop-filter: blur(10px);
+  }
+  tbody tr { transition: all 0.2s; }
+  tbody tr:hover td { background: rgba(0, 243, 255, 0.08); }
+  tbody tr:last-child td { border-bottom: none; }
+  
+  /* ETIQUETAS (BADGES) NEON */
+  .badge {
+    padding: 4px 10px; border-radius: 2px; font-size: 10px; font-weight: 800;
+    display: inline-flex; align-items: center; justify-content: center; 
+    font-family: 'Orbitron', sans-serif; letter-spacing: 0.5px;
+    background: transparent; border: 1px solid currentColor;
+  }
+  .badge.CRÍTICA { color: var(--critical); box-shadow: 0 0 8px rgba(255, 42, 85, 0.3); }
+  .badge.ALTA    { color: var(--high); box-shadow: 0 0 8px rgba(255, 140, 0, 0.3); }
+  .badge.MÉDIA   { color: var(--medium); box-shadow: 0 0 8px rgba(255, 215, 0, 0.3); }
+  .badge.BAIXA   { color: var(--low); box-shadow: 0 0 8px rgba(0, 255, 136, 0.3); }
+  
+  .badge.alto    { color: var(--critical); border-color: var(--critical); }
+  .badge.médio, .badge.medio { color: var(--high); border-color: var(--high); }
+  .badge.baixo   { color: var(--low); border-color: var(--low); }
+
+  .status-pill {
+    font-size: 10px; padding: 4px 10px; border-radius: 2px; font-weight: 700;
+    display: inline-flex; align-items: center; gap: 4px; text-transform: uppercase;
+    font-family: 'Orbitron', sans-serif; letter-spacing: 0.5px;
+  }
+  .status-pill.has { color: var(--low); border: 1px solid var(--low); background: rgba(0, 255, 136, 0.05); box-shadow: 0 0 8px rgba(0, 255, 136, 0.2); }
+  .status-pill.no  { color: var(--critical); border: 1px solid var(--critical); background: rgba(255, 42, 85, 0.05); box-shadow: 0 0 8px rgba(255, 42, 85, 0.2); }
+
+  /* INPUTS NA TABELA */
+  td input[type="date"], td input[type="text"] {
+    width: 100%; padding: 6px 10px; border: 1px solid rgba(0, 243, 255, 0.2); border-radius: 4px;
+    font-size: 12px; background: rgba(0, 0, 0, 0.4); color: #fff; font-family: 'Inter', sans-serif;
+    transition: all 0.2s;
+  }
+  td input[type="date"]:focus, td input[type="text"]:focus {
+    outline: none; border-color: var(--cyan); box-shadow: var(--glow-cyan); background: rgba(0, 243, 255, 0.1);
+  }
+
+  .empty { padding: 60px; text-align: center; color: var(--cyan-dim); font-size: 14px; font-weight: 500; letter-spacing: 1px; }
+  .hint { font-size: 12px; color: var(--text-muted); margin-top: 16px; font-weight: 500; }
+  #refInfo {
+    font-size: 12px; color: var(--cyan); margin-bottom: 16px; font-weight: 700;
+    background: rgba(0, 243, 255, 0.08); padding: 10px 16px; border-radius: 4px; 
+    display: inline-block; border: 1px solid var(--border-tech); font-family: 'Orbitron', sans-serif;
+    letter-spacing: 1px; box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.1); backdrop-filter: blur(4px);
+  }
+
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulse { 0% { opacity: 1; box-shadow: 0 0 5px var(--cyan); } 50% { opacity: 0.5; box-shadow: 0 0 15px var(--cyan); } 100% { opacity: 1; box-shadow: 0 0 5px var(--cyan); } }
+</style>
+</head>
+<body>
+
+<!-- CANVAS DE FUNDO INTERATIVO -->
+<canvas id="bgCanvas"></canvas>
+
+<header>
+  <h1>SISTEMA DE ANÁLISE OS</h1>
+  <p>Monitoramento de Clientes Recorrentes e Prevenção de Cancelamentos</p>
+</header>
+
+<main>
+  <div class="controls">
+    <div class="field">
+      <label>Arquivo XLSX</label>
+      <input type="file" id="fileInput" accept=".xlsx,.xls">
+    </div>
+    <div class="field">
+      <label>Data de Início</label>
+      <input type="date" id="startDate">
+    </div>
+    <div class="field">
+      <label>Data de Fim</label>
+      <input type="date" id="endDate">
+    </div>
+    <button id="btnAnalyze" disabled>Executar Análise</button>
+    <button id="btnExport" class="secondary" disabled>Exportar Dados</button>
+  </div>
+
+  <div id="refInfo"></div>
+  
+  <div class="cards" id="summary"></div>
+  <div id="filterPillContainer" class="filter-pill-container"></div>
+
+  <div class="filters">
+    <div class="field">
+      <label>Filtro de Prioridade</label>
+      <select id="filterPri">
+        <option value="">TODAS</option>
+        <option>CRÍTICA</option>
+        <option>ALTA</option>
+        <option>MÉDIA</option>
+        <option>BAIXA</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Risco de Cancelamento</label>
+      <select id="filterRisco">
+        <option value="">TODOS</option>
+        <option>ALTO</option>
+        <option>MÉDIO</option>
+        <option>BAIXO</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Status da Agenda</label>
+      <select id="filterStatus">
+        <option value="">TODOS</option>
+        <option value="AGENDAR">AGENDAR</option>
+        <option value="CONFIRMAR">CONFIRMAR</option>
+      </select>
+    </div>
+    <div class="field" style="flex:1;min-width:220px">
+      <label>Busca Global</label>
+      <input type="text" id="search" placeholder="Procurar por cliente, bairro ou ID...">
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Prioridade</th>
+          <th>Status</th>
+          <th>Data Limite</th>
+          <th>Cliente</th>
+          <th>Bairro</th>
+          <th>Qtde OS</th>
+          <th>Visitas</th>
+          <th>Última OS</th>
+          <th>Último Assunto</th>
+          <th>Técnicos</th>
+          <th>Risco</th>
+          <th>Data Planejada</th>
+          <th>Observação</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr><td colspan="13" class="empty">Aguardando upload do arquivo XLSX...</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="hint">
+    <b>[SISTEMA]</b> Clique nos módulos acima para filtrar. Mova o mouse pelo fundo para interagir com a rede de dados.
+  </p>
+</main>
+
+<script>
+/* =========================================================
+   EFEITO DE FUNDO INTERATIVO (CANVAS - REDE NEURAL)
+   ========================================================= */
+const canvas = document.getElementById('bgCanvas');
+const ctx = canvas.getContext('2d');
+let width, height;
+let particles = [];
+const particleCount = 60; 
+const connectionDistance = 150;
+const mouseConnectionDistance = 200;
+let mouse = { x: null, y: null };
+
+function resize() {
+  width = canvas.width = window.innerWidth;
+  height = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+window.addEventListener('mousemove', (e) => {
+  mouse.x = e.x;
+  mouse.y = e.y;
+});
+window.addEventListener('mouseout', () => {
+  mouse.x = null;
+  mouse.y = null;
+});
+
+class Particle {
+  constructor() {
+    this.x = Math.random() * width;
+    this.y = Math.random() * height;
+    this.vx = (Math.random() - 0.5) * 0.8;
+    this.vy = (Math.random() - 0.5) * 0.8;
+    this.radius = Math.random() * 2 + 1;
+  }
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    if (this.x < 0 || this.x > width) this.vx *= -1;
+    if (this.y < 0 || this.y > height) this.vy *= -1;
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0, 243, 255, 0.6)';
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = '#00f3ff';
+    ctx.fill();
+    ctx.shadowBlur = 0; 
+  }
+}
+
+function initParticles() {
+  particles = [];
+  for (let i = 0; i < particleCount; i++) {
+    particles.push(new Particle());
+  }
+}
+initParticles();
+
+function animateCanvas() {
+  ctx.clearRect(0, 0, width, height);
+  
+  // Atualiza e desenha partículas
+  particles.forEach(p => {
+    p.update();
+    p.draw();
+  });
+
+  // Desenha conexões entre as partículas
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < connectionDistance) {
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        const opacity = 1 - (dist / connectionDistance);
+        ctx.strokeStyle = `rgba(0, 243, 255, ${opacity * 0.3})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+
+    // Desenha conexões com o mouse
+    if (mouse.x != null && mouse.y != null) {
+      const dx = particles[i].x - mouse.x;
+      const dy = particles[i].y - mouse.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      
+      if (dist < mouseConnectionDistance) {
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(mouse.x, mouse.y);
+        const opacity = 1 - (dist / mouseConnectionDistance);
+        ctx.strokeStyle = `rgba(185, 0, 255, ${opacity * 0.6})`; // Roxo conectando ao mouse
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+    }
+  }
+
+  requestAnimationFrame(animateCanvas);
+}
+animateCanvas();
+
+
+/* =========================================================
+   LÓGICA DE ANÁLISE E DASHBOARD
+   ========================================================= */
+const ADMIN_KEYWORDS_NORM = [
+  'CONTATO POS-VENDA',
+  'ATIVACAO - ATIVACAO DE APPS',
+  'SUPORTE - SUPORTE DE APP REMOTO',
+];
+const ORDEM_PRI = { 'CRÍTICA':1, 'ALTA':2, 'MÉDIA':3, 'BAIXA':4 };
+
+let OS_DATA = [];
+let AGG = [];
+let currentRows = [];
+let activeCardFilter = null;
+let START_DATE = null;
+let END_DATE = null;
+
+function norm(s){
+  return (s==null?'':String(s)).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
+}
+function isAdminSubject(a){
+  const n = norm(a);
+  if(!n) return false;
+  return ADMIN_KEYWORDS_NORM.some(k => n.includes(k));
+}
+function parseDate(v){
+  if(v==null||v==='') return null;
+  if(v instanceof Date) return isNaN(v.getTime())?null:v;
+  if(typeof v==='number'){
+    const ms = (v - 25569) * 86400 * 1000;
+    const d = new Date(ms);
+    return isNaN(d.getTime())?null:d;
+  }
+  const s = String(v).trim();
+  if(!s) return null;
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if(m) return new Date(+m[1], +m[2]-1, +m[3], +(m[4]||0), +(m[5]||0), +(m[6]||0));
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if(m) return new Date(+m[3], +m[2]-1, +m[1], +(m[4]||0), +(m[5]||0), +(m[6]||0));
+  const d = new Date(s);
+  return isNaN(d.getTime())?null:d;
+}
+function fmtDate(d){
+  if(!d) return '';
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${dd}`;
+}
+function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+function daysBetween(a,b){
+  if(!a||!b) return null;
+  const ms = new Date(b.getFullYear(),b.getMonth(),b.getDate()) - new Date(a.getFullYear(),a.getMonth(),a.getDate());
+  return Math.round(ms/86400000);
+}
+function classifyPriority(visitas, osQtd){
+  if(visitas>=3 || osQtd>=5) return { pri:'CRÍTICA', prazo:1 };
+  if(visitas===2 || osQtd>=3) return { pri:'ALTA', prazo:2 };
+  if(osQtd===2)                return { pri:'MÉDIA', prazo:4 };
+  return { pri:'BAIXA', prazo:7 };
+}
+function classifyRisk(visitas, osQtd, temAgendaFutura){
+  if(visitas>=3 || (osQtd>=3 && !temAgendaFutura)) return 'ALTO';
+  if(visitas>=2 || osQtd>=2) return 'MÉDIO';
+  return 'BAIXO';
+}
+
+async function loadFile(file){
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, { type:'array', cellDates:true });
+  const sheetName = wb.SheetNames.includes('Export') ? 'Export' : wb.SheetNames[0];
+  const ws = wb.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(ws, { defval:null, raw:true });
+  return rows.map(r => {
+    const o = {};
+    for(const k of Object.keys(r)) o[String(k).trim()] = r[k];
+    return o;
+  });
+}
+
+function analyze(){
+  const startStr = document.getElementById('startDate').value;
+  const endStr = document.getElementById('endDate').value;
+  
+  if(!startStr || !endStr){
+    alert('ERRO: Preencha a Data de Início e a Data de Fim.');
+    return;
+  }
+  START_DATE = new Date(startStr + 'T00:00:00');
+  END_DATE = new Date(endStr + 'T23:59:59');
+  if(START_DATE > END_DATE){
+    alert('ERRO: A Data de Início não pode ser maior que a Data de Fim.');
+    return;
+  }
+
+  const validas = OS_DATA.filter(r => {
+    const idOs = Number(r['IdOs']);
+    const idCli = Number(r['IdCliente']);
+    if(!idOs || !idCli) return false;
+    const dt = parseDate(r['DataAberturaOs']);
+    if(!dt) return false;
+    return dt >= START_DATE && dt <= END_DATE;
+  });
+
+  const seen = new Map();
+  for(const r of validas) seen.set(Number(r['IdOs']), r);
+  const unicas = Array.from(seen.values());
+
+  const byClient = new Map();
+  for(const r of unicas){
+    const idCli = Number(r['IdCliente']);
+    const dt    = parseDate(r['DataAberturaOs']);
+    const dtAg  = parseDate(r['DataAgendaOs']);
+    const dtFec = parseDate(r['DataFechamentoOs']);
+    const assunto = r['Assuntos'] || '';
+    const isVisita = !isAdminSubject(assunto);
+
+    let c = byClient.get(idCli);
+    if(!c){
+      c = {
+        IdCliente:idCli, Clientes:r['Clientes']||'', Bairro:r['Bairro']||'',
+        osQtd:0, visitas:0,
+        primeiraOS:dt, ultimaOS:dt, ultimoFechamento:null,
+        ultimoAssunto:assunto, ultimoDiagnostico:r['Diagnóstico']||'', ultimoTecnico:r['Técnicos']||'',
+        assuntos:new Set(), tecnicos:new Set(),
+        datasAgenda:[], possuiAgendaFutura:false,
+      };
+      byClient.set(idCli,c);
+    }
+
+    c.osQtd += 1;
+    if(isVisita) c.visitas += 1;
+
+    if(dt && (!c.primeiraOS || dt < c.primeiraOS)) c.primeiraOS = dt;
+    if(dt && (!c.ultimaOS || dt > c.ultimaOS)){
+      c.ultimaOS = dt;
+      c.ultimoAssunto = assunto;
+      c.ultimoDiagnostico = r['Diagnóstico']||'';
+      c.ultimoTecnico = r['Técnicos']||'';
+    }
+    if(dtFec && (!c.ultimoFechamento || dtFec > c.ultimoFechamento)) c.ultimoFechamento = dtFec;
+    if(assunto) c.assuntos.add(assunto);
+    if(r['Técnicos']) c.tecnicos.add(r['Técnicos']);
+    if(dtAg){
+      c.datasAgenda.push(dtAg);
+      if(dtAg > END_DATE) c.possuiAgendaFutura = true;
+    }
+  }
+
+  AGG = Array.from(byClient.values()).map(c => {
+    const { pri, prazo } = classifyPriority(c.visitas, c.osQtd);
+    const risco = classifyRisk(c.visitas, c.osQtd, c.possuiAgendaFutura);
+    const dataLimite = addDays(END_DATE, prazo);
+    return {
+      ...c,
+      prioridade:pri, prazo, risco,
+      diasDesdeUltima: c.ultimaOS ? daysBetween(c.ultimaOS, END_DATE) : null,
+      dataLimite: fmtDate(dataLimite),
+      statusAgenda: c.possuiAgendaFutura ? 'CONFIRMAR' : 'AGENDAR',
+      acao: c.possuiAgendaFutura ? 'Confirmar agenda existente' : 'Agendar visita',
+      ordem: ORDEM_PRI[pri],
+      assuntosStr: Array.from(c.assuntos).sort().join('; '),
+      tecnicosStr: Array.from(c.tecnicos).sort().join('; '),
+      datasAgendaStr: Array.from(new Set(c.datasAgenda.map(fmtDate))).sort().join('; '),
+    };
+  });
+
+  const recorrentes = AGG.filter(c => c.osQtd > 1).sort((a,b) =>
+    a.ordem - b.ordem || b.visitas - a.visitas || b.osQtd - a.osQtd ||
+    (a.diasDesdeUltima ?? 999) - (b.diasDesdeUltima ?? 999)
+  );
+
+  renderSummary(AGG, recorrentes, unicas.length, byClient.size);
+  applyFilters();
+  document.getElementById('btnExport').disabled = false;
+}
+
+function renderSummary(all, rec, osCount, clientCount){
+  const pri = { 'CRÍTICA':0,'ALTA':0,'MÉDIA':0,'BAIXA':0 };
+  for(const c of rec) pri[c.prioridade] = (pri[c.prioridade]||0)+1;
+  const withAgenda = rec.filter(c => c.possuiAgendaFutura).length;
+  const visitas2   = rec.filter(c => c.visitas >= 2).length;
+
+  document.getElementById('summary').innerHTML = `
+    <div class="card" data-type="os_analisadas" data-tooltip="Ver todos os clientes com OS no período">
+      <div class="label">OS Analisadas</div>
+      <div class="value">${osCount}</div>
+    </div>
+    <div class="card" data-type="clientes_unicos" data-tooltip="Ver todos os clientes únicos no período">
+      <div class="label">Clientes Únicos</div>
+      <div class="value">${clientCount}</div>
+    </div>
+    <div class="card" data-type="recorrentes" data-tooltip="Clientes com mais de 1 OS no período">
+      <div class="label">Recorrentes</div>
+      <div class="value">${rec.length}</div>
+    </div>
+    <div class="card" data-type="visitas_2" data-tooltip="Clientes com 2 ou mais visitas técnicas">
+      <div class="label">≥2 Visitas</div>
+      <div class="value">${visitas2}</div>
+    </div>
+    <div class="card critical" data-type="pri_critica" data-tooltip="Filtrar por Prioridade CRÍTICA">
+      <div class="label">Crítica</div>
+      <div class="value">${pri['CRÍTICA']}</div>
+    </div>
+    <div class="card high" data-type="pri_alta" data-tooltip="Filtrar por Prioridade ALTA">
+      <div class="label">Alta</div>
+      <div class="value">${pri['ALTA']}</div>
+    </div>
+    <div class="card medium" data-type="pri_media" data-tooltip="Filtrar por Prioridade MÉDIA">
+      <div class="label">Média</div>
+      <div class="value">${pri['MÉDIA']}</div>
+    </div>
+    <div class="card low" data-type="agenda_futura" data-tooltip="Clientes que já possuem agendamento futuro">
+      <div class="label">Agenda Futura</div>
+      <div class="value">${withAgenda}</div>
+    </div>
+  `;
+
+  document.querySelectorAll('#summary .card').forEach(card => {
+    card.addEventListener('click', () => {
+      const type = card.dataset.type;
+      if(activeCardFilter === type){
+        activeCardFilter = null;
+        card.classList.remove('active');
+      } else {
+        document.querySelectorAll('#summary .card').forEach(c => c.classList.remove('active'));
+        activeCardFilter = type;
+        card.classList.add('active');
+      }
+      applyFilters();
+    });
+  });
+
+  document.getElementById('refInfo').innerHTML =
+    `[ SISTEMA ATIVO ] Período: ${fmtDate(START_DATE).split('-').reverse().join('/')} até ${fmtDate(END_DATE).split('-').reverse().join('/')}`;
+}
+
+const CARD_LABELS = {
+  'os_analisadas': 'OS Analisadas', 'clientes_unicos': 'Clientes Únicos',
+  'recorrentes': 'Recorrentes', 'visitas_2': '≥2 Visitas Técnicas',
+  'pri_critica': 'Prioridade Crítica', 'pri_alta': 'Prioridade Alta',
+  'pri_media': 'Prioridade Média', 'agenda_futura': 'Agenda Futura'
+};
+
+function updatePill() {
+  const container = document.getElementById('filterPillContainer');
+  if (!activeCardFilter) {
+    container.innerHTML = '';
+    return;
+  }
+  const label = CARD_LABELS[activeCardFilter] || activeCardFilter;
+  container.innerHTML = `
+    <div class="filter-pill">
+      <span>[ FILTRO ATIVO: ${label} ]</span>
+      <button onclick="clearCardFilter()" title="Remover filtro">×</button>
+    </div>
+  `;
+}
+
+window.clearCardFilter = function() {
+  activeCardFilter = null;
+  document.querySelectorAll('#summary .card').forEach(c => c.classList.remove('active'));
+  applyFilters();
+};
+
+function applyFilters() {
+  if (!AGG || AGG.length === 0) return;
+
+  let rows = (activeCardFilter === 'os_analisadas' || activeCardFilter === 'clientes_unicos') 
+    ? AGG : AGG.filter(c => c.osQtd > 1);
+
+  if (activeCardFilter === 'visitas_2') rows = rows.filter(c => c.visitas >= 2);
+  else if (activeCardFilter === 'pri_critica') rows = rows.filter(c => c.prioridade === 'CRÍTICA');
+  else if (activeCardFilter === 'pri_alta') rows = rows.filter(c => c.prioridade === 'ALTA');
+  else if (activeCardFilter === 'pri_media') rows = rows.filter(c => c.prioridade === 'MÉDIA');
+  else if (activeCardFilter === 'agenda_futura') rows = rows.filter(c => c.possuiAgendaFutura);
+
+  const pri = document.getElementById('filterPri').value;
+  const risco = document.getElementById('filterRisco').value;
+  const status = document.getElementById('filterStatus').value;
+  const busca = norm(document.getElementById('search').value);
+
+  rows = rows.filter(r => {
+    if (pri && r.prioridade !== pri) return false;
+    if (risco && r.risco !== risco) return false;
+    if (status && r.statusAgenda !== status) return false;
+    if (busca) {
+      const hay = norm(`${r.Clientes} ${r.Bairro} ${r.IdCliente} ${r.assuntosStr}`);
+      if (!hay.includes(busca)) return false;
+    }
+    return true;
+  });
+
+  renderTableBody(rows);
+  updatePill();
+}
+
+function renderTableBody(rows) {
+  currentRows = rows;
+  const tbody = document.getElementById('tbody');
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="13" class="empty">NENHUM REGISTRO ENCONTRADO...</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td><span class="badge ${r.prioridade}">${r.prioridade}</span></td>
+      <td><span class="status-pill ${r.statusAgenda==='CONFIRMAR'?'has':'no'}">${r.statusAgenda}</span></td>
+      <td>${r.dataLimite}</td>
+      <td style="color: #fff; font-weight: 600;">${r.Clientes}</td>
+      <td>${r.Bairro}</td>
+      <td style="text-align:center; color: var(--cyan); font-weight: bold; font-family: 'Orbitron';">${r.osQtd}</td>
+      <td style="text-align:center; color: var(--cyan); font-weight: bold; font-family: 'Orbitron';">${r.visitas}</td>
+      <td>${r.ultimaOS ? fmtDate(r.ultimaOS) : ''}</td>
+      <td>${r.ultimoAssunto || ''}</td>
+      <td>${r.tecnicosStr || ''}</td>
+      <td><span class="badge ${r.risco.toLowerCase()}">${r.risco}</span></td>
+      <td><input type="date" class="plano-data" data-id="${r.IdCliente}"></td>
+      <td><input type="text" class="plano-obs"  data-id="${r.IdCliente}" placeholder="Anotação..."></td>
+    </tr>
+  `).join('');
+}
+
+function exportXlsx(){
+  const rows = currentRows;
+  if(rows.length === 0) { alert('Não há dados para exportar.'); return; }
+
+  const planData = new Map();
+  const planObs  = new Map();
+  document.querySelectorAll('.plano-data').forEach(i => planData.set(i.dataset.id, i.value));
+  document.querySelectorAll('.plano-obs') .forEach(i => planObs .set(i.dataset.id, i.value));
+
+  const dados = rows.map(r => ({
+    'Prioridade': r.prioridade, 'Status Agenda': r.statusAgenda, 'Data Limite Contato': r.dataLimite,
+    'Data Planejada': planData.get(String(r.IdCliente)) || '', 'IdCliente': r.IdCliente,
+    'Cliente': r.Clientes, 'Bairro': r.Bairro, 'Qtde OS': r.osQtd, 'Qtde Visitas': r.visitas,
+    'Primeira OS': r.primeiraOS ? fmtDate(r.primeiraOS) : '', 'Última OS': r.ultimaOS ? fmtDate(r.ultimaOS) : '',
+    'Dias Desde Última': r.diasDesdeUltima, 'Último Assunto': r.ultimoAssunto, 'Último Diagnóstico': r.ultimoDiagnostico,
+    'Técnicos': r.tecnicosStr, 'Assuntos (todos)': r.assuntosStr, 'Datas Agenda': r.datasAgendaStr,
+    'Agenda Futura': r.possuiAgendaFutura ? 'SIM' : 'NÃO', 'Risco Cancelamento': r.risco,
+    'Ação Sugerida': r.acao, 'Observação': planObs.get(String(r.IdCliente)) || '',
+  }));
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(dados);
+  ws['!cols'] = [{wch:10},{wch:12},{wch:14},{wch:14},{wch:10},{wch:30},{wch:25},{wch:10},{wch:12},{wch:12},{wch:12},{wch:10},{wch:30},{wch:35},{wch:25},{wch:35},{wch:20},{wch:12},{wch:14},{wch:40},{wch:30}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Agenda_Sugerida');
+
+  const nameStr = `${fmtDate(START_DATE)}_a_${fmtDate(END_DATE)}`;
+  XLSX.writeFile(wb, `agenda_recorrentes_${nameStr}.xlsx`);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const today = new Date();
+  const past30 = new Date();
+  past30.setDate(today.getDate() - 30);
+  document.getElementById('endDate').value = fmtDate(today);
+  document.getElementById('startDate').value = fmtDate(past30);
+
+  const fileInput = document.getElementById('fileInput');
+  const btnAnalyze = document.getElementById('btnAnalyze');
+
+  fileInput.addEventListener('change', async (e) => {
+    const f = e.target.files[0];
+    if(!f) return;
+    try{
+      OS_DATA = await loadFile(f);
+      btnAnalyze.disabled = false;
+      document.getElementById('tbody').innerHTML =
+        `<tr><td colspan="13" class="empty" style="color:var(--cyan)">ARQUIVO CARREGADO (${OS_DATA.length} LINHAS). CLIQUE EM EXECUTAR ANÁLISE.</td></tr>`;
+    }catch(err){ alert('Erro ao ler o arquivo: ' + err.message); }
+  });
+
+  btnAnalyze.addEventListener('click', () => {
+    try{ analyze(); } catch(err){ alert('Erro ao analisar: ' + err.message); }
+  });
+
+  document.getElementById('btnExport').addEventListener('click', exportXlsx);
+  
+  ['filterPri','filterRisco','filterStatus','search'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => {
+      if (AGG.length) applyFilters();
+    });
+  });
+});
+</script>
+</body>
+</html>
