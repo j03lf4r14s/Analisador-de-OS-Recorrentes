@@ -3,151 +3,361 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Analisador de OS Recorrentes</title>
+<title>Analisador de Reincidência de Clientes</title>
 <style>
   :root{
-    --bg:#f5f6f8; --card:#fff; --ink:#1b2430; --muted:#667085; --line:#e4e7ec;
-    --accent:#1d5fd1; --accent-ink:#fff; --warn:#b42318; --warn-bg:#fef3f2; --ok-bg:#eef4ff;
-    --dim:#98a2b3;
+    --bg:#070b12;--glass:rgba(18,26,40,.55);--glass-2:rgba(14,20,32,.72);
+    --border:rgba(120,160,220,.14);--border-strong:rgba(77,159,255,.45);
+    --ink:#e8eef7;--muted:#8b9ab1;--line:rgba(120,160,220,.12);
+    --accent:#4d9fff;--accent-2:#8b5cf6;--accent-ink:#fff;
+    --grad:linear-gradient(135deg,#2563eb,#7c3aed);
+    --ok:#10b981;--ok-bg:rgba(16,185,129,.12);
+    --warn:#f59e0b;--warn-bg:rgba(245,158,11,.12);
+    --hi:#f97316;--hi-bg:rgba(249,115,22,.14);
+    --crit:#ef4444;--crit-bg:rgba(239,68,68,.15);
+    --dim:#5c6b82;--radius:14px;
+    --shadow:0 10px 34px rgba(0,0,0,.38);
   }
-  @media (prefers-color-scheme: dark){
-    :root{ --bg:#0f141b; --card:#171e28; --ink:#e7ebf1; --muted:#98a2b3; --line:#283240;
-      --accent:#5b9bff; --accent-ink:#0b1220; --warn:#ff8f85; --warn-bg:#3a1b19; --ok-bg:#16233a; --dim:#667085; }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#eef2f9;--glass:rgba(255,255,255,.70);--glass-2:rgba(255,255,255,.85);
+      --border:rgba(20,60,120,.10);--border-strong:rgba(29,95,209,.45);
+      --ink:#0f1a2b;--muted:#5b6b82;--line:rgba(20,60,120,.10);
+      --accent:#1d5fd1;--accent-2:#6a4bff;
+      --shadow:0 10px 30px rgba(20,50,100,.12);
+    }
   }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-  .wrap{max-width:1240px;margin:0 auto;padding:20px 16px 60px}
-  h1{font-size:22px;margin:0 0 2px}
-  .sub{color:var(--muted);margin:0 0 18px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:14px}
-  .drop{border:2px dashed var(--line);border-radius:10px;padding:22px;text-align:center;cursor:pointer;color:var(--muted)}
-  .drop.over{border-color:var(--accent);background:var(--ok-bg)}
-  .drop strong{color:var(--ink)}
-  .files{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px}
-  .tag{background:var(--ok-bg);border-radius:99px;padding:3px 10px;font-size:12px}
-  .tag button{border:0;background:none;color:var(--muted);cursor:pointer;padding:0 0 0 6px;font-size:13px}
-  .msg{margin-top:10px;font-size:13px}
-  .msg.err{color:var(--warn)}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
-  label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);font-weight:600}
-  input,select{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:7px 9px;min-width:0}
-  input:focus,select:focus,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-  button.btn{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:6px;padding:7px 12px;cursor:pointer}
-  button.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+  html,body{margin:0;min-height:100vh;color:var(--ink);background:var(--bg);
+    font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  ::selection{background:var(--accent);color:#fff}
+  .bg{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;
+    background:radial-gradient(1200px 800px at 15% -10%, rgba(77,159,255,.18), transparent 60%),
+      radial-gradient(1000px 700px at 100% 5%, rgba(124,92,255,.16), transparent 55%),
+      radial-gradient(900px 600px at 50% 120%, rgba(0,224,200,.10), transparent 60%),
+      var(--bg)}
+  .bg::after{content:"";position:absolute;inset:0;
+    background-image:linear-gradient(rgba(120,160,220,.045) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(120,160,220,.045) 1px,transparent 1px);
+    background-size:48px 48px;
+    -webkit-mask-image:radial-gradient(circle at 50% 35%,#000,transparent 78%);
+            mask-image:radial-gradient(circle at 50% 35%,#000,transparent 78%)}
+
+  /* Layout */
+  .topbar{position:sticky;top:0;z-index:50;background:var(--glass-2);
+    backdrop-filter:blur(24px) saturate(165%);-webkit-backdrop-filter:blur(24px) saturate(165%);
+    border-bottom:1px solid var(--border)}
+  .topbar-inner{max-width:1400px;margin:0 auto;padding:14px 20px;
+    display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand-icon{width:42px;height:42px;border-radius:11px;
+    background:var(--grad);display:grid;place-items:center;font-size:20px;
+    box-shadow:0 8px 24px rgba(77,159,255,.4)}
+  .brand h1{margin:0;font-size:18px;letter-spacing:-.02em;
+    background:linear-gradient(100deg,var(--ink),var(--accent));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .brand-sub{margin:0;font-size:11px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+  .topbar-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+  .wrap{max-width:1400px;margin:0 auto;padding:20px 20px 60px}
+
+  .card{background:var(--glass);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px;margin-bottom:16px;
+    backdrop-filter:blur(24px) saturate(165%);-webkit-backdrop-filter:blur(24px) saturate(165%);
+    box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.06)}
+
+  /* Botões */
+  button.btn{font:inherit;color:var(--ink);cursor:pointer;background:var(--glass-2);
+    border:1px solid var(--border);border-radius:9px;padding:9px 14px;
+    backdrop-filter:blur(10px);transition:all .15s}
+  button.btn:hover{border-color:var(--border-strong)}
+  button.btn.primary{background:var(--grad);color:#fff;border:none;font-weight:600;
+    box-shadow:0 6px 22px rgba(77,159,255,.35)}
+  button.btn.primary:hover{box-shadow:0 8px 28px rgba(124,92,255,.45)}
   button.btn:disabled{opacity:.5;cursor:not-allowed}
-  details.subj summary{cursor:pointer;font-weight:600;font-size:13px}
-  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
-  .chip{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:99px;padding:3px 10px;font-size:12px;cursor:pointer;user-select:none}
-  .chip.on{background:var(--ok-bg);border-color:var(--accent)}
-  .chip input{display:none}
-  .chip small{color:var(--muted)}
-  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
-  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px}
-  .kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
-  .kpi b{display:block;font-size:26px;line-height:1.1}
-  .kpi span{color:var(--muted);font-size:12px}
-  table{width:100%;border-collapse:collapse}
-  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
-  th{font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap;user-select:none;position:sticky;top:0;background:var(--card)}
+
+  /* Upload */
+  .drop{border:2px dashed var(--border);border-radius:var(--radius);
+    padding:32px 24px;text-align:center;cursor:pointer;color:var(--muted);
+    background:rgba(255,255,255,.02);transition:all .18s}
+  .drop:hover{border-color:var(--border-strong);background:var(--ok-bg)}
+  .drop.over{border-color:var(--accent);background:var(--ok-bg);transform:scale(.997)}
+  .drop strong{color:var(--ink);display:block;margin-bottom:4px}
+  .files{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .tag{background:var(--ok-bg);border:1px solid var(--border);border-radius:99px;
+    padding:4px 12px;font-size:12px;display:flex;align-items:center;gap:6px}
+  .tag button{border:0;background:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0}
+  .tag button:hover{color:var(--crit)}
+  .msg{margin-top:10px;font-size:13px}
+  .msg.err{color:var(--crit)}
+
+  /* Filtros */
+  .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+  .filters label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted);
+    font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+  .filters input,.filters select{font:inherit;font-size:13px;color:var(--ink);background:var(--glass-2);
+    border:1px solid var(--border);border-radius:8px;padding:8px 10px;min-width:0}
+  .filters input:focus,.filters select:focus{outline:none;border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(77,159,255,.20)}
+  .filters .date-range{display:flex;gap:6px;align-items:center}
+  .filters .date-range input{flex:1}
+
+  /* KPIs */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+  .kpi{background:var(--glass);border:1px solid var(--border);border-radius:var(--radius);
+    padding:16px 18px;cursor:default;
+    backdrop-filter:blur(24px) saturate(165%);-webkit-backdrop-filter:blur(24px) saturate(165%);
+    box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.06);
+    transition:transform .15s,box-shadow .15s}
+  .kpi:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(77,159,255,.18)}
+  .kpi b{display:block;font-size:28px;line-height:1.1;letter-spacing:-.01em;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-variant-numeric:tabular-nums}
+  .kpi span{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;
+    display:block;margin-top:4px;font-weight:600}
+  .kpi.crit b{color:var(--crit)} .kpi.hi b{color:var(--hi)}
+  .kpi.warn b{color:var(--warn)} .kpi.ok b{color:var(--ok)}
+  .kpi.info b{color:var(--accent)}
+
+  /* Alerts */
+  .alerts{background:linear-gradient(135deg,rgba(239,68,68,.08),rgba(249,115,22,.08));
+    border:1px solid rgba(239,68,68,.25)}
+  .alerts h2{margin:0 0 12px;font-size:15px;display:flex;align-items:center;gap:8px}
+  .alert-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}
+  .alert-item{background:var(--glass-2);border:1px solid var(--border);border-radius:10px;
+    padding:12px 14px;cursor:pointer;transition:all .15s}
+  .alert-item:hover{border-color:var(--crit);transform:translateY(-1px)}
+  .alert-item strong{display:block;font-size:13px;margin-bottom:2px}
+  .alert-item small{color:var(--muted);font-size:11px}
+
+  /* Charts */
+  .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;margin-bottom:16px}
+  .chart-card{background:var(--glass);border:1px solid var(--border);border-radius:var(--radius);
+    padding:16px;backdrop-filter:blur(24px) saturate(165%);
+    -webkit-backdrop-filter:blur(24px) saturate(165%);
+    box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.06)}
+  .chart-card h3{margin:0 0 12px;font-size:13px;font-weight:600;color:var(--ink);
+    text-transform:uppercase;letter-spacing:.04em}
+  .chart-card .chart-svg{width:100%;height:auto;display:block;color:var(--ink)}
+  .chart-card .empty{padding:24px;text-align:center;color:var(--muted);font-size:12px}
+  .legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;font-size:11px}
+  .legend span{display:flex;align-items:center;gap:5px;color:var(--muted)}
+  .legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+
+  /* Tabela */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{font-size:11px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;
+    cursor:pointer;user-select:none;padding:10px;text-align:left;
+    border-bottom:1px solid var(--line);white-space:nowrap;
+    background:var(--glass-2);position:sticky;top:0;backdrop-filter:blur(14px)}
+  th:hover{color:var(--accent)}
+  th.sorted{color:var(--accent)}
   th.sorted::after{content:" ▼"} th.sorted.asc::after{content:" ▲"}
-  tr.main{cursor:pointer} tr.main:hover td{background:var(--ok-bg)}
-  td.num,th.num{text-align:right}
-  .pill{display:inline-block;background:var(--warn-bg);color:var(--warn);border-radius:99px;padding:1px 9px;font-weight:700;font-size:12px}
-  .caret{display:inline-block;width:14px;color:var(--muted);transition:transform .15s}
-  tr.open .caret{transform:rotate(90deg)}
-  tr.detail td{background:var(--bg);padding:0}
-  .inner{padding:10px 14px 14px 34px}
-  .inner table th{position:static;cursor:default;background:transparent}
-  .inner td.num,.inner th.num{padding-right:28px}
-  tr.dim td{color:var(--dim)}
-  tr.hit td.gap{color:var(--warn);font-weight:700}
+  td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr.row{cursor:pointer}
+  tr.row:hover td{background:var(--ok-bg)}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .scroll{overflow-x:auto;max-height:600px}
+  .scroll::-webkit-scrollbar{height:8px;width:8px}
+  .scroll::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:8px}
+
+  /* Pills de gravidade */
+  .pill{display:inline-block;border-radius:99px;padding:2px 10px;font-size:11px;font-weight:700;
+    letter-spacing:.03em;text-transform:uppercase}
+  .pill.bx{background:rgba(77,159,255,.14);color:#4d9fff}
+  .pill.md{background:var(--warn-bg);color:var(--warn)}
+  .pill.al{background:var(--hi-bg);color:var(--hi)}
+  .pill.cr{background:var(--crit-bg);color:var(--crit)}
+  .pill.na{background:rgba(120,140,170,.15);color:var(--muted)}
+
+  /* Modal */
+  .modal-overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.72);
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    display:none;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto}
+  .modal-overlay.open{display:flex}
+  .modal{background:var(--glass-2);border:1px solid var(--border-strong);border-radius:16px;
+    max-width:1200px;width:100%;padding:24px;position:relative;
+    backdrop-filter:blur(30px) saturate(165%);-webkit-backdrop-filter:blur(30px) saturate(165%);
+    box-shadow:0 30px 90px rgba(0,0,0,.6);margin:auto}
+  .modal-close{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:50%;
+    border:1px solid var(--border);background:var(--glass);color:var(--ink);cursor:pointer;
+    font-size:16px;display:grid;place-items:center;transition:all .15s}
+  .modal-close:hover{border-color:var(--crit);color:var(--crit)}
+  .modal h2{margin:0 0 4px;font-size:22px;letter-spacing:-.02em}
+  .modal .modal-sub{color:var(--muted);font-size:13px;margin:0 0 18px}
+
+  .modal-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+  .modal-kpi{background:var(--glass);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+  .modal-kpi b{display:block;font-size:20px;font-weight:700;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .modal-kpi span{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+
+  .badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .badge-lg{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:10px;
+    border:1px solid var(--border);background:var(--glass);font-size:12px}
+  .badge-lg strong{font-size:13px}
+
+  .reco-box{background:linear-gradient(135deg,rgba(77,159,255,.08),rgba(124,92,255,.08));
+    border:1px solid rgba(77,159,255,.25);border-radius:10px;padding:14px 16px;margin-bottom:16px}
+  .reco-box h4{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--accent)}
+  .reco-box ul{margin:0;padding-left:18px}
+  .reco-box li{font-size:13px;margin-bottom:5px;line-height:1.5}
+
+  .section-title{margin:20px 0 10px;font-size:12px;text-transform:uppercase;
+    letter-spacing:.05em;color:var(--muted);font-weight:700}
+
+  /* Timeline */
+  .timeline{position:relative;padding-left:22px;margin:8px 0 16px}
+  .timeline::before{content:"";position:absolute;left:8px;top:8px;bottom:8px;width:2px;
+    background:linear-gradient(to bottom,var(--accent),var(--accent-2))}
+  .tl-item{position:relative;padding:8px 0 12px 16px;border-bottom:1px dashed var(--line)}
+  .tl-item:last-child{border-bottom:none}
+  .tl-dot{position:absolute;left:-18px;top:12px;width:12px;height:12px;border-radius:50%;
+    background:var(--accent);border:2px solid var(--glass-2);box-shadow:0 0 10px var(--accent)}
+  .tl-date{font-size:12px;font-weight:700;color:var(--accent);margin-bottom:2px}
+  .tl-subject{font-size:13px;font-weight:600;margin-bottom:2px}
+  .tl-diag{font-size:12px;color:var(--muted);margin-bottom:2px}
+  .tl-meta{font-size:11px;color:var(--muted);font-style:italic}
+
+  .pattern-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .pattern-tag{background:var(--glass);border:1px solid var(--border);border-radius:99px;
+    padding:3px 10px;font-size:11px;color:var(--ink)}
+
+  .hidden{display:none!important}
   .muted{color:var(--muted)}
-  .rule{font-size:12.5px;color:var(--muted)}
-  .scroll{overflow-x:auto}
   .empty{padding:30px;text-align:center;color:var(--muted)}
-  .hidden{display:none}
+
+  @media (max-width:760px){
+    .topbar-inner{padding:12px 14px}
+    .wrap{padding:14px 14px 40px}
+    .brand h1{font-size:15px}
+    .charts-grid{grid-template-columns:1fr}
+    .filters{grid-template-columns:1fr 1fr}
+    .modal{padding:18px}
+  }
+
+  @media print{
+    .topbar,.bg,.drop,.files,.msg,.filters,.modal-close,
+    button.btn,.alerts + .charts-grid button, .hidden-print{display:none!important}
+    body{background:#fff;color:#000}
+    .card,.kpi,.chart-card{background:#fff;border:1px solid #ccc;box-shadow:none;
+      backdrop-filter:none;break-inside:avoid}
+    .scroll{max-height:none;overflow:visible}
+    table{font-size:11px}
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>Analisador de OS Recorrentes</h1>
-  <p class="sub">Carregue o relatório de OS (.xlsx ou .csv) e veja os clientes com mais de uma OS aberta em menos de N dias. Tudo roda no seu navegador — nenhum dado é enviado.</p>
 
-  <div class="card">
+<div class="bg" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-icon">📊</div>
+      <div>
+        <h1>Analisador de Reincidência</h1>
+        <p class="brand-sub">Inteligência Operacional · Provedor de Internet</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn" id="btnExportRanking" disabled>📥 Ranking CSV</button>
+      <button class="btn" id="btnExportFull" disabled>📥 Relatório Completo</button>
+      <button class="btn primary" id="btnPrint" disabled>🖨️ PDF / Imprimir</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- Upload -->
+  <section class="card">
     <div class="drop" id="drop" tabindex="0" role="button" aria-label="Selecionar arquivos">
-      <strong>Arraste os arquivos aqui</strong> ou clique para selecionar<br>
-      <span>Você pode carregar vários meses de uma vez; OS repetidas (mesmo IdOs) são ignoradas.</span>
-      <input id="file" type="file" accept=".xlsx,.csv" multiple class="hidden">
+      <strong>Arraste o relatório de OS aqui</strong>
+      ou clique para selecionar · formatos .xlsx, .xls, .csv<br>
+      <small>Múltiplos arquivos permitidos. Processamento 100% no navegador — nenhum dado é enviado.</small>
+      <input id="file" type="file" accept=".xlsx,.xls,.csv" multiple class="hidden">
     </div>
     <div class="files" id="files"></div>
     <div class="msg" id="msg"></div>
-  </div>
+  </section>
 
   <div id="app" class="hidden">
-    <div class="card">
-      <div class="grid">
-        <label class="f">Mês (atalho)
-          <select id="month"><option value="">—</option></select>
+    <!-- Filtros -->
+    <section class="card">
+      <div class="filters">
+        <label>Período
+          <div class="date-range">
+            <input type="date" id="fFrom">
+            <span class="muted" style="font-size:11px">a</span>
+            <input type="date" id="fTo">
+          </div>
         </label>
-        <label class="f">Início (abertura da OS)
-          <input type="date" id="from">
-        </label>
-        <label class="f">Fim (abertura da OS)
-          <input type="date" id="to">
-        </label>
-        <label class="f">Janela (dias)
-          <input type="number" id="win" min="1" value="30">
-        </label>
-        <label class="f">Mín. de OS na janela
-          <input type="number" id="minos" min="2" value="2">
-        </label>
-        <label class="f">Filial
-          <select id="filial"><option value="">Todas</option></select>
-        </label>
-        <label class="f">Buscar cliente / ID
-          <input type="search" id="q" placeholder="nome ou IdCliente">
-        </label>
+        <label>Bairro<select id="fBairro"><option value="">Todos</option></select></label>
+        <label>Cliente<input type="search" id="fCliente" placeholder="nome ou ID"></label>
+        <label>Técnico<select id="fTecnico"><option value="">Todos</option></select></label>
+        <label>Assunto<select id="fAssunto"><option value="">Todos</option></select></label>
+        <label>Categoria<select id="fCategoria"><option value="">Todas</option></select></label>
+        <label>Gravidade<select id="fGravidade">
+          <option value="">Todas</option>
+          <option value="BAIXO">Baixo</option>
+          <option value="MODERADO">Moderado</option>
+          <option value="ALTO">Alto</option>
+          <option value="CRÍTICO">Crítico</option>
+        </select></label>
+        <label>Janela (dias)<input type="number" id="fWin" value="30" min="1"></label>
       </div>
-      <details class="subj" id="subjBox" style="margin-top:14px">
-        <summary>Assuntos considerados (<span id="subjCount"></span>)</summary>
-        <div class="row">
-          <button class="btn" id="subjAll">Todos</button>
-          <button class="btn" id="subjRep">Só reparos</button>
-          <button class="btn" id="subjNoPos">Sem pós-venda</button>
-          <button class="btn" id="subjNone">Nenhum</button>
-        </div>
-        <div class="chips" id="chips"></div>
-      </details>
-      <p class="rule" style="margin:12px 0 0">
-        Regra: considera as OS <b>abertas</b> dentro do período Início–Fim (inclusive). Um cliente aparece se tiver
-        duas ou mais OS cuja diferença entre as datas de abertura seja <b>menor que</b> a janela (em dias corridos, pela data, não pela hora).
-        As duas OS precisam estar dentro do período filtrado.
-      </p>
-    </div>
+    </section>
 
-    <div class="kpis" id="kpis"></div>
+    <!-- KPIs -->
+    <section class="kpis" id="kpis"></section>
 
-    <div class="card">
-      <div class="row" style="margin:0 0 10px;justify-content:space-between">
-        <strong id="tableTitle">Clientes</strong>
-        <div class="row" style="margin:0">
-          <button class="btn" id="expand">Expandir todos</button>
-          <button class="btn primary" id="export">Exportar CSV</button>
-        </div>
-      </div>
-      <div class="scroll"><table id="tbl"></table></div>
-    </div>
+    <!-- Alertas -->
+    <section class="card alerts hidden" id="alerts">
+      <h2>🚨 Alertas Prioritários</h2>
+      <div class="alert-list" id="alertsList"></div>
+    </section>
+
+    <!-- Gráficos -->
+    <section class="charts-grid">
+      <div class="chart-card"><h3>Reincidência por Gravidade</h3><div id="chart1"></div><div class="legend" id="legend1"></div></div>
+      <div class="chart-card"><h3>Top 10 Clientes Mais Reincidentes</h3><div id="chart2"></div></div>
+      <div class="chart-card"><h3>Reincidência por Bairro</h3><div id="chart3"></div></div>
+      <div class="chart-card"><h3>Assuntos Recorrentes</h3><div id="chart4"></div></div>
+      <div class="chart-card"><h3>Distribuição de OS por Cliente</h3><div id="chart5"></div></div>
+      <div class="chart-card"><h3>Evolução de OS no Período</h3><div id="chart6"></div></div>
+      <div class="chart-card"><h3>Técnicos Envolvidos em Reincidências</h3><div id="chart7"></div></div>
+    </section>
+
+    <!-- Ranking -->
+    <section class="card">
+      <h2 style="margin:0 0 12px;font-size:15px">Ranking de Clientes por Prioridade</h2>
+      <p class="muted" style="margin:0 0 12px;font-size:12px">Clique em um cliente para abrir a ficha completa.</p>
+      <div class="scroll"><table id="ranking"></table></div>
+    </section>
+  </div>
+</main>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <button class="modal-close" id="modalClose">✕</button>
+    <div id="modalBody"></div>
   </div>
 </div>
 
 <script>
 "use strict";
-/* ================= Leitura de arquivos (sem bibliotecas externas) ================= */
+/* ============================================================
+   ANALISADOR DE REINCIDÊNCIA — BI OPERACIONAL
+   ============================================================ */
+
 const DAY = 86400000;
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const norm = s => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+const norm = s => String(s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
 
+/* ---------- Leitura de arquivos ---------- */
 async function readZip(buf){
   const dv = new DataView(buf), u8 = new Uint8Array(buf), dec = new TextDecoder();
   let e = u8.length - 22;
@@ -172,29 +382,27 @@ async function readZip(buf){
     return await new Response(stream).text();
   };
 }
-const xml = t => new DOMParser().parseFromString(t.replace(/^\uFEFF/, ""), "application/xml");
+const xml = t => new DOMParser().parseFromString(t.replace(/^\uFEFF/,""), "application/xml");
 const tags = (el, n) => el.getElementsByTagNameNS("*", n);
-const colIdx = ref => { let n = 0; for (const ch of ref.replace(/[0-9]/g, "")) n = n * 26 + ch.charCodeAt(0) - 64; return n - 1; };
+const colIdx = ref => { let n = 0; for (const ch of ref.replace(/[0-9]/g,"")) n = n*26 + ch.charCodeAt(0) - 64; return n - 1; };
 
 async function readXlsx(buf){
   const get = await readZip(buf);
   const ss = [];
   const sst = await get("xl/sharedStrings.xml");
-  if (sst) for (const si of tags(xml(sst), "si")){
-    ss.push([...tags(si, "t")].map(t => t.textContent).join(""));
-  }
+  if (sst) for (const si of tags(xml(sst), "si")) ss.push([...tags(si, "t")].map(t => t.textContent).join(""));
   let path = null;
   try {
     const wb = xml(await get("xl/workbook.xml")), rels = xml(await get("xl/_rels/workbook.xml.rels"));
     const sh = tags(wb, "sheet")[0];
-    const rid = sh.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id") || sh.getAttribute("r:id");
+    const rid = sh.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships","id") || sh.getAttribute("r:id");
     for (const r of tags(rels, "Relationship")) if (r.getAttribute("Id") === rid){
       let t = r.getAttribute("Target"); path = t.startsWith("/") ? t.slice(1) : "xl/" + t;
     }
-  } catch(_) {}
+  } catch(_){}
   let sx = path && await get(path);
   if (!sx) sx = await get("xl/worksheets/sheet1.xml");
-  if (!sx) throw new Error("Planilha não encontrada dentro do arquivo.");
+  if (!sx) throw new Error("Planilha não encontrada.");
   const rows = [];
   for (const r of tags(xml(sx), "row")){
     const arr = []; let pos = 0;
@@ -208,7 +416,8 @@ async function readXlsx(buf){
         else if (t === "b") val = v.textContent === "1";
         else val = parseFloat(v.textContent);
       }
-      const ref = c.getAttribute("r"); const ci = ref ? colIdx(ref) : pos; arr[ci] = val; pos = ci + 1;
+      const ref = c.getAttribute("r"), ci = ref ? colIdx(ref) : pos;
+      arr[ci] = val; pos = ci + 1;
     }
     rows.push(arr);
   }
@@ -216,9 +425,9 @@ async function readXlsx(buf){
 }
 
 function readCsv(text){
-  text = text.replace(/^﻿/, "");
+  text = text.replace(/^\uFEFF/,"");
   const first = text.split(/\r?\n/, 1)[0];
-  const d = (first.match(/;/g) || []).length >= (first.match(/,/g) || []).length ? ";" : ",";
+  const d = (first.match(/;/g)||[]).length >= (first.match(/,/g)||[]).length ? ";" : ",";
   const rows = []; let row = [], cur = "", q = false;
   for (let i = 0; i < text.length; i++){
     const ch = text[i];
@@ -232,7 +441,6 @@ function readCsv(text){
   return rows;
 }
 
-// Converte serial do Excel, "dd/mm/aaaa hh:mm" ou ISO em ms (tratado como UTC, sem fuso)
 function toMs(v){
   if (v == null || v === "") return null;
   if (typeof v === "number") return Math.round((v - 25569) * DAY);
@@ -244,48 +452,192 @@ function toMs(v){
   return null;
 }
 
+/* ---------- Mapeamento de colunas ---------- */
 const COLS = {
-  id:["idos"], cid:["idcliente"], cliente:["clientes","cliente"], bairro:["bairro"], tecnico:["tecnicos","tecnico"],
-  filial:["filial"], assunto:["asssuntos","assuntos","assunto"], diag:["diagnostico"],
-  abertura:["dataaberturaos","dataabertura"], fechamento:["datafechamentoos","datafechamento"], status:["statusos","status"]
+  id:["idos"], cid:["idcliente"], cliente:["clientes","cliente"], bairro:["bairro"],
+  tecnico:["tecnicos","tecnico","tecnicosposterior"],
+  filial:["filial"], categoria:["categoriaos","categoria"],
+  assunto:["asssuntos","assuntos","assunto"], diag:["diagnostico"],
+  abertura:["dataaberturaos","dataabertura"],
+  execucao:["datahoraexecucaoos","datahoraexecucao","dataexecucao"],
+  fechamento:["datafechamentoos","datafechamento"],
+  status:["statusos","status"]
 };
 
 function tableToOs(rows){
   let h = -1, map = {};
   for (let i = 0; i < Math.min(rows.length, 15); i++){
     const names = (rows[i] || []).map(norm);
-    if (names.includes("idcliente") && names.some(n => n.startsWith("dataabertura"))){ h = i;
-      for (const [k, alts] of Object.entries(COLS)){ const j = names.findIndex(n => alts.includes(n)); if (j >= 0) map[k] = j; }
-      break; }
+    if (names.includes("idcliente") && names.some(n => n.startsWith("dataabertura"))){
+      h = i;
+      for (const [k, alts] of Object.entries(COLS)){
+        const j = names.findIndex(n => alts.includes(n));
+        if (j >= 0) map[k] = j;
+      }
+      break;
+    }
   }
-  if (h < 0) throw new Error("Não encontrei as colunas IdCliente e DataAberturaOs no cabeçalho.");
-  const out = []; let skipped = 0;
+  if (h < 0) throw new Error("Cabeçalho não encontrado — precisa ter IdCliente e DataAberturaOs.");
+  const out = []; let skipped = 0, dups = 0;
+  const seenIds = new Set();
   for (let i = h + 1; i < rows.length; i++){
     const r = rows[i] || [], g = k => map[k] == null ? null : r[map[k]];
     const cid = g("cid"), ab = toMs(g("abertura"));
-    if (cid == null || cid === "" || ab == null){ skipped++; continue; }   // rodapé / linhas de filtro
+    if (cid == null || cid === "" || ab == null){ skipped++; continue; }
+    const id = g("id") != null ? String(g("id")).trim() : null;
+    // FIX: dedup por IdOS + DataAbertura (mantém visitas com datas diferentes)
+    const dedupKey = id ? (id + "|" + ab) : null;
+    if (dedupKey && seenIds.has(dedupKey)){ dups++; continue; }
+    if (dedupKey) seenIds.add(dedupKey);
     out.push({
-      id: g("id") != null ? String(g("id")).trim() : null,
-      cid: String(cid).trim(), cliente: String(g("cliente") ?? "").trim(), bairro: String(g("bairro") ?? "").trim(),
-      tecnico: String(g("tecnico") ?? "").trim(), filial: String(g("filial") ?? "").trim(),
-      assunto: String(g("assunto") ?? "").trim() || "(sem assunto)", diag: String(g("diag") ?? "").trim(),
-      status: String(g("status") ?? "").trim(), abertura: ab, fechamento: toMs(g("fechamento")), day: Math.floor(ab / DAY)
+      id, cid: String(cid).trim(),
+      cliente: String(g("cliente") ?? "").trim(),
+      bairro: String(g("bairro") ?? "").trim(),
+      tecnico: String(g("tecnico") ?? "").trim(),
+      filial: String(g("filial") ?? "").trim(),
+      categoria: String(g("categoria") ?? "").trim(),
+      assunto: String(g("assunto") ?? "").trim() || "(sem assunto)",
+      diag: String(g("diag") ?? "").trim(),
+      status: String(g("status") ?? "").trim(),
+      abertura: ab,
+      execucao: toMs(g("execucao")),
+      fechamento: toMs(g("fechamento")),
+      day: Math.floor(ab / DAY)
     });
   }
-  return {out, skipped};
+  return { out, skipped, dups };
 }
 
-/* ================= Estado ================= */
-const S = { all: [], files: [], subjects: new Map(), sel: new Set(), sortKey: "n", sortAsc: false, result: [], open: new Set(), subjInit: false };
-
+/* ---------- Utilitários ---------- */
 const fmtDay = d => { const t = new Date(d * DAY); return `${String(t.getUTCDate()).padStart(2,"0")}/${String(t.getUTCMonth()+1).padStart(2,"0")}/${t.getUTCFullYear()}`; };
 const fmtDT = ms => { if (ms == null) return "—"; const t = new Date(ms); return fmtDay(Math.floor(ms/DAY)) + ` ${String(t.getUTCHours()).padStart(2,"0")}:${String(t.getUTCMinutes()).padStart(2,"0")}`; };
 const iso = d => new Date(d * DAY).toISOString().slice(0, 10);
 const isoToDay = s => s ? Math.floor(Date.parse(s + "T00:00:00Z") / DAY) : null;
-const isPos = a => /P[ÓO]S-?\s?VENDA/i.test(a);
-const isRep = a => /^REPARO|^TECNICO|^SUPORTE/i.test(a.normalize("NFD").replace(/[̀-ͯ]/g, ""));
 
-/* ================= Upload ================= */
+/* ---------- Análise de reincidência ---------- */
+function maxInWindow(days, windowDays){
+  if (!days.length) return { count: 0, start: -1 };
+  let max = 0, maxStart = -1;
+  for (let i = 0; i < days.length; i++){
+    let count = 0;
+    for (let j = i; j < days.length; j++){
+      if (days[j] - days[i] < windowDays) count++; else break;
+    }
+    if (count > max){ max = count; maxStart = i; }
+  }
+  return { count: max, start: maxStart };
+}
+
+function severityFromCount(n){
+  if (n >= 5) return "CRÍTICO";
+  if (n >= 4) return "ALTO";
+  if (n >= 3) return "MODERADO";
+  if (n >= 2) return "BAIXO";
+  return null;
+}
+
+function detectPatterns(client){
+  const p = { semConexao:0, oscilacao:0, sinalAtenu:0, equipamento:0, cabeamento:0,
+              inconclusivo:0, distintos:0, configModem:0, supervisor:0 };
+  const subjects = new Set();
+  client.list.forEach(r => {
+    const sub = (r.assunto || "").toUpperCase();
+    const diag = (r.diag || "").toUpperCase();
+    if (sub.includes("SEM CONEX") || sub.includes("SEM CONEXÃO")) p.semConexao++;
+    if (sub.includes("OSCILA")) p.oscilacao++;
+    if (sub.includes("ATENUAD") || sub.includes("SINAL") || diag.includes("ATENUAD")) p.sinalAtenu++;
+    if (diag.includes("TROCA DE EQUIPAMENTO")) p.equipamento++;
+    if (diag.includes("CABO") || diag.includes("DROP") || diag.includes("CONECTOR")) p.cabeamento++;
+    if (!diag || diag === "NÃO INFORMADO" || diag === "NAO INFORMADO" || diag === "FINALIZAR" || diag === "FINALIZADO INCORRETAMENTE") p.inconclusivo++;
+    if (diag.includes("RECONFIGURA")) p.configModem++;
+    if (sub.includes("SUPERVISÃO")) p.supervisor++;
+    subjects.add(r.assunto);
+  });
+  p.distintos = subjects.size;
+  return p;
+}
+
+function technicalSeverity(client, patterns){
+  let score = 0;
+  const subjectCounts = {};
+  client.list.forEach(r => subjectCounts[r.assunto] = (subjectCounts[r.assunto] || 0) + 1);
+  Object.values(subjectCounts).forEach(c => { if (c >= 2) score += (c - 1) * 2; });
+  const diagCounts = {};
+  client.list.forEach(r => {
+    const d = (r.diag || "").toUpperCase();
+    if (d && d !== "NÃO INFORMADO" && d !== "NAO INFORMADO" && d !== "FINALIZAR" && d !== "FINALIZADO INCORRETAMENTE") {
+      diagCounts[d] = (diagCounts[d] || 0) + 1;
+    }
+  });
+  Object.values(diagCounts).forEach(c => { if (c >= 2) score += (c - 1); });
+  client.gaps.forEach(g => {
+    if (g == null) return;
+    if (g <= 3) score += 3;
+    else if (g <= 7) score += 2;
+    else if (g <= 15) score += 1;
+  });
+  score += patterns.inconclusivo;
+  if (patterns.equipamento >= 2) score += 2;
+  if (patterns.cabeamento >= 2) score += 2;
+
+  if (score >= 15) return "CRÍTICO";
+  if (score >= 10) return "ALTO";
+  if (score >= 5) return "MODERADO";
+  return "BAIXO";
+}
+
+function analyzeClient(cid, list, windowDays){
+  list.sort((a, b) => a.abertura - b.abertura || (Number(a.id) || 0) - (Number(b.id) || 0));
+  const days = list.map(r => r.day);
+  const gaps = list.map((r, i) => i ? r.day - list[i-1].day : null);
+  const cluster = maxInWindow(days, windowDays);
+  const severity = severityFromCount(cluster.count);
+  const patterns = detectPatterns({ list });
+  const techSev = technicalSeverity({ list, gaps }, patterns);
+  const nearGaps = gaps.filter(g => g != null && g < windowDays);
+  const avgGap = gaps.filter(g => g != null).length
+    ? gaps.filter(g => g != null).reduce((a,b) => a+b, 0) / gaps.filter(g => g != null).length
+    : null;
+  const subjectCounts = {};
+  list.forEach(r => subjectCounts[r.assunto] = (subjectCounts[r.assunto] || 0) + 1);
+  const mostFreq = Object.entries(subjectCounts).sort((a,b) => b[1] - a[1])[0];
+  const techCounts = {};
+  list.forEach(r => { if (r.tecnico) techCounts[r.tecnico] = (techCounts[r.tecnico] || 0) + 1; });
+  const diagCounts = {};
+  list.forEach(r => {
+    const d = r.diag || "—";
+    if (d.toUpperCase() !== "NÃO INFORMADO") diagCounts[d] = (diagCounts[d] || 0) + 1;
+  });
+  return {
+    cid, cliente: list[0].cliente || `Cliente ${cid}`, bairro: list[0].bairro,
+    list, days, gaps, cluster, severity, techSev, patterns,
+    total: list.length,
+    osEmJanela: cluster.count,
+    reincidencias: Math.max(0, cluster.count - 1),
+    minGap: nearGaps.length ? Math.min(...nearGaps) : null,
+    avgGap,
+    last: days[days.length - 1],
+    first: days[0],
+    mostFreq: mostFreq ? mostFreq[0] : "—",
+    mostFreqCount: mostFreq ? mostFreq[1] : 0,
+    techCounts,
+    diagCounts,
+    distintoSubjects: patterns.distintos,
+    isRecurrent: cluster.count >= 2
+  };
+}
+
+/* ---------- Estado ---------- */
+const S = {
+  all: [], files: [],
+  clients: [],
+  filtered: [],
+  filters: { from:null, to:null, bairro:"", cliente:"", tecnico:"", assunto:"", categoria:"", gravidade:"", win:30 },
+  sortKey: "severityRank", sortAsc: false,
+  openCid: null
+};
+
+/* ---------- Upload ---------- */
 const drop = $("drop"), fileIn = $("file");
 drop.onclick = () => fileIn.click();
 drop.onkeydown = e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); fileIn.click(); } };
@@ -295,13 +647,13 @@ drop.addEventListener("drop", e => load([...e.dataTransfer.files]));
 fileIn.onchange = () => { load([...fileIn.files]); fileIn.value = ""; };
 
 async function load(list){
-  const msg = $("msg"); msg.className = "msg"; msg.textContent = "Lendo…";
+  const msg = $("msg"); msg.className = "msg"; msg.textContent = "Lendo e processando…";
   const errs = [];
   for (const f of list){
     try {
       const rows = /\.csv$/i.test(f.name) ? readCsv(await f.text()) : await readXlsx(await f.arrayBuffer());
-      const {out, skipped} = tableToOs(rows);
-      S.files.push({name: f.name, n: out.length, skipped, rows: out});
+      const parsed = tableToOs(rows);
+      S.files.push({ name: f.name, n: parsed.out.length, dups: parsed.dups, rows: parsed.out });
     } catch(e){ errs.push(`${f.name}: ${e.message}`); }
   }
   rebuild();
@@ -310,151 +662,525 @@ async function load(list){
 }
 
 function rebuild(){
-  const seen = new Set(), all = []; let dups = 0;
+  const seen = new Set(), all = [];
   for (const f of S.files) for (const r of f.rows){
-    const key = r.id ? "o" + r.id : null;
-    if (key && seen.has(key)){ dups++; continue; }
-    if (key) seen.add(key); all.push(r);
+    // FIX: chave IdOS + DataAbertura (visitas no mesmo IdOS com datas diferentes coexistem)
+    const key = (r.id || "c" + r.cid) + "|" + r.abertura;
+    if (seen.has(key)) continue;
+    seen.add(key); all.push(r);
   }
   S.all = all;
   $("files").innerHTML = S.files.map((f, i) =>
-    `<span class="tag">${esc(f.name)} · ${f.n} OS<button data-i="${i}" title="Remover" aria-label="Remover ${esc(f.name)}">✕</button></span>`).join("");
-  $("files").querySelectorAll("button").forEach(b => b.onclick = () => { S.files.splice(+b.dataset.i, 1); S.subjInit = false; rebuild(); });
+    `<span class="tag">${esc(f.name)} · ${f.n} OS${f.dups ? ` · ${f.dups} dup` : ""}<button data-i="${i}" title="Remover">✕</button></span>`).join("");
+  $("files").querySelectorAll("button").forEach(b => b.onclick = () => {
+    S.files.splice(+b.dataset.i, 1);
+    rebuild();
+  });
+
   if (!all.length){ $("app").classList.add("hidden"); return; }
   $("app").classList.remove("hidden");
-  if (dups){ $("msg").textContent = `${dups} OS repetidas (mesmo IdOs) foram ignoradas.`; }
 
-  // período
-  const days = all.map(r => r.day), mn = Math.min(...days), mx = Math.max(...days);
-  $("from").value = iso(mn); $("to").value = iso(mx);
-  const months = [...new Set(all.map(r => iso(r.day).slice(0, 7)))].sort();
-  $("month").innerHTML = `<option value="">—</option>` + months.map(m => `<option>${m}</option>`).join("");
-  // filiais
-  const fil = [...new Set(all.map(r => r.filial).filter(Boolean))].sort();
-  $("filial").innerHTML = `<option value="">Todas</option>` + fil.map(f => `<option>${esc(f)}</option>`).join("");
-  // assuntos
-  S.subjects = new Map();
-  all.forEach(r => S.subjects.set(r.assunto, (S.subjects.get(r.assunto) || 0) + 1));
-  if (!S.subjInit){ S.sel = new Set([...S.subjects.keys()].filter(a => !isPos(a))); S.subjInit = true; }
-  renderChips(); run();
+  const days = all.map(r => r.day);
+  const mn = Math.min(...days), mx = Math.max(...days);
+  $("fFrom").value = iso(mn);
+  $("fTo").value = iso(mx);
+
+  const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort();
+  const fill = (id, list, allLabel) => {
+    const el = $(id);
+    el.innerHTML = `<option value="">${allLabel}</option>` +
+      list.map(v => `<option>${esc(v)}</option>`).join("");
+  };
+  fill("fBairro", uniq(all.map(r => r.bairro)), "Todos");
+  fill("fTecnico", uniq(all.map(r => r.tecnico)), "Todos");
+  fill("fAssunto", uniq(all.map(r => r.assunto)), "Todos");
+  fill("fCategoria", uniq(all.map(r => r.categoria)), "Todas");
+
+  S.filters = { from:mn, to:mx, bairro:"", cliente:"", tecnico:"", assunto:"", categoria:"", gravidade:"", win:30 };
+
+  bindFilters();
+  applyFilters();   // FIX: aplica filtros no boot (antes ficava vazio no 1º render)
+  updateAll();
 }
 
-function renderChips(){
-  const list = [...S.subjects].sort((a, b) => b[1] - a[1]);
-  $("chips").innerHTML = list.map(([a, n], i) =>
-    `<label class="chip ${S.sel.has(a) ? "on" : ""}"><input type="checkbox" data-a="${i}" ${S.sel.has(a) ? "checked" : ""}>${esc(a)} <small>${n}</small></label>`).join("");
-  $("chips").querySelectorAll("input").forEach(inp => inp.onchange = () => {
-    const a = list[+inp.dataset.a][0]; inp.checked ? S.sel.add(a) : S.sel.delete(a);
-    inp.parentElement.classList.toggle("on", inp.checked); run();
+function bindFilters(){
+  const handlers = [
+    ["fFrom","change"], ["fTo","change"],
+    ["fBairro","change"], ["fCliente","input"], ["fTecnico","change"],
+    ["fAssunto","change"], ["fCategoria","change"], ["fGravidade","change"],
+    ["fWin","input"]
+  ];
+  for (const [id, ev] of handlers){
+    const el = $(id);
+    el.replaceWith(el.cloneNode(true));
+    const fresh = $(id);
+    fresh.addEventListener(ev, () => { applyFilters(); updateAll(); });
+  }
+}
+
+/* ---------- Filtros ---------- */
+function applyFilters(){
+  S.filters.from = isoToDay($("fFrom").value);
+  S.filters.to = isoToDay($("fTo").value);
+  S.filters.bairro = $("fBairro").value;
+  S.filters.cliente = $("fCliente").value.trim().toLowerCase();
+  S.filters.tecnico = $("fTecnico").value;
+  S.filters.assunto = $("fAssunto").value;
+  S.filters.categoria = $("fCategoria").value;
+  S.filters.gravidade = $("fGravidade").value;
+  S.filters.win = Math.max(1, Number($("fWin").value) || 30);
+
+  const F = S.filters;
+  const os = S.all.filter(r => {
+    if (F.from != null && r.day < F.from) return false;
+    if (F.to != null && r.day > F.to) return false;
+    if (F.bairro && r.bairro !== F.bairro) return false;
+    if (F.tecnico && r.tecnico !== F.tecnico) return false;
+    if (F.assunto && r.assunto !== F.assunto) return false;
+    if (F.categoria && r.categoria !== F.categoria) return false;
+    return true;
   });
-  $("subjCount").textContent = `${S.sel.size} de ${S.subjects.size}`;
-}
-const setSel = fn => { S.sel = new Set([...S.subjects.keys()].filter(fn)); renderChips(); run(); };
-$("subjAll").onclick = () => setSel(() => true);
-$("subjNone").onclick = () => setSel(() => false);
-$("subjNoPos").onclick = () => setSel(a => !isPos(a));
-$("subjRep").onclick = () => setSel(a => isRep(a) && !isPos(a));
 
-$("month").onchange = e => {
-  const m = e.target.value; if (!m) return;
-  const [y, mo] = m.split("-").map(Number);
-  $("from").value = iso(Date.UTC(y, mo - 1, 1) / DAY);
-  $("to").value = iso(Date.UTC(y, mo, 0) / DAY);
-  run();
-};
-["from","to","win","minos","filial"].forEach(id => $(id).addEventListener("input", () => { if (id === "from" || id === "to") $("month").value = ""; run(); }));
-$("q").addEventListener("input", run);
-
-/* ================= Análise ================= */
-function analyze(){
-  const from = isoToDay($("from").value), to = isoToDay($("to").value);
-  const win = Math.max(1, +$("win").value || 30), minOs = Math.max(2, +$("minos").value || 2), fil = $("filial").value;
-  const groups = new Map(); let osInRange = 0;
-  for (const r of S.all){
-    if (from != null && r.day < from) continue;
-    if (to != null && r.day > to) continue;
-    if (fil && r.filial !== fil) continue;
-    if (!S.sel.has(r.assunto)) continue;
-    osInRange++;
+  const groups = new Map();
+  for (const r of os){
     if (!groups.has(r.cid)) groups.set(r.cid, []);
     groups.get(r.cid).push(r);
   }
-  const res = [];
+  const clients = [];
   for (const [cid, list] of groups){
-    list.sort((a, b) => a.abertura - b.abertura || (+a.id || 0) - (+b.id || 0));
-    const gaps = list.map((r, i) => i ? r.day - list[i-1].day : null);
-    const hit = list.map((_, i) => (i > 0 && gaps[i] < win) || (i < list.length - 1 && gaps[i+1] < win));
-    const n = hit.filter(Boolean).length;
-    if (n < minOs) continue;
-    const near = gaps.filter(g => g != null && g < win);
-    res.push({ cid, cliente: list[0].cliente, bairro: list[0].bairro, filial: list[0].filial, list, gaps, hit, n, total: list.length,
-      minGap: Math.min(...near), first: list.find((_, i) => hit[i]).day, last: [...list].reverse().find((_, i) => hit[list.length - 1 - i]).day });
+    const c = analyzeClient(cid, list, F.win);
+    if (F.cliente){
+      const q = F.cliente;
+      if (!c.cliente.toLowerCase().includes(q) && !c.cid.includes(q)) continue;
+    }
+    if (F.gravidade && c.severity !== F.gravidade) continue;
+    clients.push(c);
   }
-  return {res, osInRange, clients: groups.size, win, from, to};
+  S.clients = clients;
+  S.filtered = clients;
 }
 
-function run(){
-  const A = analyze(); S.A = A;
-  const q = $("q").value.trim().toLowerCase();
-  let res = A.res.filter(c => !q || c.cliente.toLowerCase().includes(q) || c.cid.includes(q));
-  const k = S.sortKey, dir = S.sortAsc ? 1 : -1;
-  res.sort((a, b) => { const x = a[k], y = b[k]; return (typeof x === "string" ? x.localeCompare(y, "pt-BR") : x - y) * dir || a.cliente.localeCompare(b.cliente, "pt-BR"); });
-  S.result = res;
-  const osHit = res.reduce((s, c) => s + c.n, 0), pct = A.clients ? (A.res.length / A.clients * 100) : 0;
-  $("subjCount").textContent = `${S.sel.size} de ${S.subjects.size}`;
-  $("kpis").innerHTML = [
-    [A.res.length, "clientes com OS recorrentes"],
-    [osHit, "OS envolvidas na recorrência"],
-    [A.clients, "clientes com OS no filtro"],
-    [pct.toFixed(1).replace(".", ",") + "%", "% de clientes recorrentes"],
-    [A.osInRange, "OS no período/filtro"],
-  ].map(([v, l]) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`).join("");
-  $("tableTitle").textContent = `Clientes com 2+ OS em menos de ${A.win} dias (${res.length})`;
-  renderTable(res);
+/* ---------- Atualização geral ---------- */
+function updateAll(){
+  renderKPIs();
+  renderCharts();
+  renderAlerts();
+  renderRanking();
+  $("btnExportRanking").disabled = false;
+  $("btnExportFull").disabled = false;
+  $("btnPrint").disabled = false;
 }
 
-const HEAD = [["cliente","Cliente"],["bairro","Bairro"],["filial","Filial"],["n","OS na janela","num"],["total","OS no período","num"],["minGap","Menor intervalo (dias)","num"],["last","Última recorrência"]];
-function renderTable(res){
-  const head = `<thead><tr><th style="width:24px"></th>${HEAD.map(([k, l, c]) => `<th data-k="${k}" class="${c||""} ${S.sortKey===k ? "sorted" + (S.sortAsc ? " asc" : "") : ""}">${l}</th>`).join("")}</tr></thead>`;
-  if (!res.length){ $("tbl").innerHTML = head + `<tbody><tr><td colspan="8" class="empty">Nenhum cliente encontrado com esses filtros.</td></tr></tbody>`; bindHead(); return; }
-  $("tbl").innerHTML = head + "<tbody>" + res.map(c => {
-    const open = S.open.has(c.cid);
-    return `<tr class="main ${open ? "open" : ""}" data-c="${esc(c.cid)}"><td><span class="caret">▶</span></td>
-      <td><b>${esc(c.cliente)}</b><br><span class="muted">ID ${esc(c.cid)}</span></td><td>${esc(c.bairro)}</td><td>${esc(c.filial)}</td>
-      <td class="num"><span class="pill">${c.n}</span></td><td class="num">${c.total}</td><td class="num">${c.minGap}</td><td>${fmtDay(c.last)}</td></tr>` +
-      (open ? `<tr class="detail"><td colspan="8">${detail(c)}</td></tr>` : "");
-  }).join("") + "</tbody>";
-  bindHead();
-  $("tbl").querySelectorAll("tr.main").forEach(tr => tr.onclick = () => { const c = tr.dataset.c; S.open.has(c) ? S.open.delete(c) : S.open.add(c); renderTable(S.result); });
+/* ---------- KPIs ---------- */
+function renderKPIs(){
+  const totalClientes = S.clients.length;
+  const totalOS = S.clients.reduce((s, c) => s + c.total, 0);
+  const recorrentes = S.clients.filter(c => c.isRecurrent);
+  const baixo = recorrentes.filter(c => c.severity === "BAIXO").length;
+  const moderado = recorrentes.filter(c => c.severity === "MODERADO").length;
+  const alto = recorrentes.filter(c => c.severity === "ALTO").length;
+  const critico = recorrentes.filter(c => c.severity === "CRÍTICO").length;
+  const pct = totalClientes ? (recorrentes.length / totalClientes * 100) : 0;
+
+  const kpis = [
+    { v: totalClientes, l: "Clientes analisados", cls: "info" },
+    { v: totalOS, l: "Ordens de serviço", cls: "info" },
+    { v: recorrentes.length, l: "Clientes reincidentes (<" + S.filters.win + "d)", cls: "hi" },
+    { v: baixo, l: "Gravidade baixa", cls: "ok" },
+    { v: moderado, l: "Gravidade moderada", cls: "warn" },
+    { v: alto, l: "Gravidade alta", cls: "hi" },
+    { v: critico, l: "Gravidade crítica", cls: "crit" },
+    { v: pct.toFixed(1).replace(".", ",") + "%", l: "Taxa de reincidência", cls: "info" }
+  ];
+  $("kpis").innerHTML = kpis.map(k =>
+    `<div class="kpi ${k.cls}"><b>${k.v}</b><span>${k.l}</span></div>`).join("");
 }
-function detail(c){
-  return `<div class="inner"><table><thead><tr><th>IdOs</th><th>Abertura</th><th class="num">Dias desde a anterior</th><th>Assunto</th><th>Diagnóstico</th><th>Técnico</th><th>Fechamento</th></tr></thead><tbody>` +
-    c.list.map((r, i) => `<tr class="${c.hit[i] ? "hit" : "dim"}"><td>${esc(r.id)}</td><td>${fmtDT(r.abertura)}</td>
-      <td class="num gap">${c.gaps[i] == null ? "—" : c.gaps[i]}</td><td>${esc(r.assunto)}</td><td>${esc(r.diag)}</td><td>${esc(r.tecnico)}</td><td>${fmtDT(r.fechamento)}</td></tr>`).join("") +
-    `</tbody></table><p class="rule" style="margin:8px 0 0">Linhas em destaque = OS dentro da regra. Linhas apagadas = OS do cliente no período que não entram na regra.</p></div>`;
+
+/* ---------- SVG Charts ---------- */
+const PALETTE = ["#4d9fff","#8b5cf6","#f59e0b","#ef4444","#06b6a4","#ec4899","#22c55e","#eab308","#a855f7","#0ea5e9"];
+
+function svgDonut(items, size = 200, thickness = 28){
+  const total = items.reduce((s, it) => s + it.value, 0);
+  if (!total) return '<div class="empty">Sem dados</div>';
+  const r = (size - thickness) / 2;
+  const cx = size/2, cy = size/2;
+  let acc = 0, paths = "";
+  items.forEach((it, i) => {
+    const len = (it.value / total) * 100;
+    paths += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${it.color || PALETTE[i%PALETTE.length]}" stroke-width="${thickness}" pathLength="100" stroke-dasharray="${len} ${100-len}" stroke-dashoffset="${-acc}" transform="rotate(-90 ${cx} ${cy})"/>`;
+    acc += len;
+  });
+  return `<svg viewBox="0 0 ${size} ${size}" class="chart-svg" style="max-width:220px;margin:0 auto">${paths}</svg>`;
 }
-function bindHead(){
-  $("tbl").querySelectorAll("thead th[data-k]").forEach(th => th.onclick = () => {
-    const k = th.dataset.k; if (S.sortKey === k) S.sortAsc = !S.sortAsc; else { S.sortKey = k; S.sortAsc = ["cliente","bairro","filial"].includes(k); }
-    run();
+
+function svgBarH(items, color = "#4d9fff"){
+  if (!items.length) return '<div class="empty">Sem dados</div>';
+  const rowH = 26, w = 420, h = items.length * rowH + 10;
+  const max = Math.max(...items.map(i => i.value), 1);
+  let rows = "";
+  items.forEach((it, i) => {
+    const y = 5 + i * rowH;
+    const bw = (it.value / max) * (w - 160);
+    rows += `<text x="0" y="${y+15}" fill="currentColor" font-size="11">${esc(it.label.length > 22 ? it.label.slice(0,21) + "…" : it.label)}</text>`;
+    rows += `<rect x="140" y="${y+4}" width="${bw}" height="15" fill="${it.color || color}" rx="3" opacity=".85"/>`;
+    rows += `<text x="${146+bw}" y="${y+15}" fill="currentColor" font-size="11" font-weight="700">${it.value}</text>`;
+  });
+  return `<svg viewBox="0 0 ${w} ${h}" class="chart-svg">${rows}</svg>`;
+}
+
+function svgLine(points, color = "#4d9fff"){
+  if (!points.length) return '<div class="empty">Sem dados</div>';
+  const w = 540, h = 200, pad = { l:34, r:12, t:12, b:30 };
+  const max = Math.max(...points.map(p => p.y), 1);
+  const plotW = w - pad.l - pad.r;
+  const plotH = h - pad.t - pad.b;
+  const xFor = i => pad.l + (i / Math.max(points.length-1, 1)) * plotW;
+  const yFor = v => pad.t + plotH - (v / max) * plotH;
+  let axis = `<line x1="${pad.l}" y1="${h-pad.b}" x2="${w-pad.r}" y2="${h-pad.b}" stroke="currentColor" stroke-opacity=".15"/>`;
+  let line = `<polyline points="${points.map((p,i)=>`${xFor(i)},${yFor(p.y)}`).join(" ")}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>`;
+  let dots = points.map((p,i) => `<circle cx="${xFor(i)}" cy="${yFor(p.y)}" r="2.5" fill="${color}"/>`).join("");
+  let labels = points.map((p,i) => {
+    if (i % Math.ceil(points.length/8) === 0 || i === points.length-1){
+      return `<text x="${xFor(i)}" y="${h-8}" fill="currentColor" font-size="9" text-anchor="middle" opacity=".65">${esc(p.x)}</text>`;
+    }
+    return "";
+  }).join("");
+  return `<svg viewBox="0 0 ${w} ${h}" class="chart-svg">${axis}${line}${dots}${labels}</svg>`;
+}
+
+function svgBars(items, color = "#8b5cf6"){
+  if (!items.length) return '<div class="empty">Sem dados</div>';
+  const w = 420, h = 200, pad = { l:12, r:12, t:20, b:32 };
+  const max = Math.max(...items.map(i => i.value), 1);
+  const slotW = (w - pad.l - pad.r) / items.length;
+  const bw = slotW - 8;
+  let bars = "";
+  items.forEach((it, i) => {
+    const x = pad.l + i * slotW + 4;
+    const bh = (it.value / max) * (h - pad.t - pad.b);
+    const y = h - pad.b - bh;
+    bars += `<rect x="${x}" y="${y}" width="${bw}" height="${bh}" fill="${color}" rx="3" opacity=".85"/>`;
+    bars += `<text x="${x+bw/2}" y="${y-4}" fill="currentColor" font-size="10" font-weight="700" text-anchor="middle">${it.value}</text>`;
+    bars += `<text x="${x+bw/2}" y="${h-10}" fill="currentColor" font-size="9" text-anchor="middle" opacity=".65">${esc(it.label)}</text>`;
+  });
+  return `<svg viewBox="0 0 ${w} ${h}" class="chart-svg">${bars}</svg>`;
+}
+
+/* ---------- Gráficos ---------- */
+function renderCharts(){
+  const recorrentes = S.clients.filter(c => c.isRecurrent);
+  const sevCounts = { BAIXO:0, MODERADO:0, ALTO:0, CRÍTICO:0 };
+  recorrentes.forEach(c => sevCounts[c.severity]++);
+  const sevColors = { BAIXO:"#4d9fff", MODERADO:"#f59e0b", ALTO:"#f97316", CRÍTICO:"#ef4444" };
+
+  const sevItems = Object.entries(sevCounts).filter(([,v]) => v > 0).map(([k,v]) => ({
+    label: k, value: v, color: sevColors[k]
+  }));
+  $("chart1").innerHTML = svgDonut(sevItems);
+  $("legend1").innerHTML = sevItems.map(it =>
+    `<span><i style="background:${it.color}"></i>${it.label} (${it.value})</span>`).join("") || "";
+
+  const top10 = [...recorrentes].sort((a,b) => b.cluster.count - a.cluster.count).slice(0,10)
+    .map(c => ({ label: c.cliente, value: c.cluster.count, color: sevColors[c.severity] }));
+  $("chart2").innerHTML = svgBarH(top10);
+
+  const bairroCounts = {};
+  recorrentes.forEach(c => { if (c.bairro) bairroCounts[c.bairro] = (bairroCounts[c.bairro] || 0) + 1; });
+  const bairroItems = Object.entries(bairroCounts).sort((a,b) => b[1]-a[1]).slice(0,8)
+    .map(([l,v]) => ({ label: l, value: v }));
+  $("chart3").innerHTML = svgBarH(bairroItems, "#8b5cf6");
+
+  const assuntoCounts = {};
+  recorrentes.forEach(c => c.list.forEach(r => {
+    assuntoCounts[r.assunto] = (assuntoCounts[r.assunto] || 0) + 1;
+  }));
+  const assuntoItems = Object.entries(assuntoCounts).sort((a,b) => b[1]-a[1]).slice(0,7)
+    .map(([l,v], i) => ({ label: l, value: v, color: PALETTE[i] }));
+  $("chart4").innerHTML = svgDonut(assuntoItems);
+
+  const buckets = { "1":0, "2":0, "3":0, "4":0, "5-9":0, "10+":0 };
+  S.clients.forEach(c => {
+    const n = c.total;
+    if (n >= 10) buckets["10+"]++;
+    else if (n >= 5) buckets["5-9"]++;
+    else buckets[String(n)] = (buckets[String(n)] || 0) + 1;
+  });
+  const histItems = Object.entries(buckets).map(([l,v]) => ({ label: l, value: v }));
+  $("chart5").innerHTML = svgBars(histItems, "#06b6a4");
+
+  const byWeek = {};
+  const minDay = S.all.length ? Math.min(...S.all.map(r => r.day)) : 0;
+  S.all.forEach(r => {
+    const weekStart = minDay + Math.floor((r.day - minDay) / 7) * 7;
+    byWeek[weekStart] = (byWeek[weekStart] || 0) + 1;
+  });
+  const weekPoints = Object.entries(byWeek).sort((a,b) => Number(a[0]) - Number(b[0]))
+    .map(([w, n]) => ({ x: fmtDay(Number(w)).slice(0,5), y: n }));
+  $("chart6").innerHTML = svgLine(weekPoints.slice(-20), "#4d9fff");
+
+  const techRec = {};
+  recorrentes.forEach(c => c.list.forEach(r => {
+    if (r.tecnico) techRec[r.tecnico] = (techRec[r.tecnico] || 0) + 1;
+  }));
+  const techItems = Object.entries(techRec).sort((a,b) => b[1]-a[1]).slice(0,8)
+    .map(([l,v]) => ({ label: l, value: v }));
+  $("chart7").innerHTML = svgBarH(techItems, "#f97316");
+}
+
+/* ---------- Alertas ---------- */
+function renderAlerts(){
+  const recorrentes = S.clients.filter(c => c.isRecurrent);
+  const critical = recorrentes.filter(c => c.severity === "CRÍTICO");
+  const high = recorrentes.filter(c => c.severity === "ALTO" && c.patterns.inconclusivo >= 2);
+  const inconclusive = recorrentes.filter(c => c.patterns.inconclusivo >= 3);
+  const equipSwap = recorrentes.filter(c => c.patterns.equipamento >= 2);
+
+  const alerts = [];
+  const seen = new Set();
+  const addAlert = (c, reason) => {
+    const key = c.cid + "|" + reason;
+    if (seen.has(key)) return;
+    seen.add(key);
+    alerts.push({ c, reason });
+  };
+  critical.forEach(c => addAlert(c, "Gravidade CRÍTICA — " + c.cluster.count + " OS em " + S.filters.win + " dias"));
+  high.forEach(c => addAlert(c, "Gravidade ALTA com diagnósticos inconclusivos"));
+  inconclusive.forEach(c => addAlert(c, c.patterns.inconclusivo + " diagnósticos inconclusivos"));
+  equipSwap.forEach(c => addAlert(c, c.patterns.equipamento + " trocas de equipamento"));
+
+  if (!alerts.length){ $("alerts").classList.add("hidden"); return; }
+  $("alerts").classList.remove("hidden");
+  $("alertsList").innerHTML = alerts.slice(0, 12).map(a =>
+    `<div class="alert-item" onclick="openClientModal('${esc(a.c.cid)}')">
+      <strong>${esc(a.c.cliente)}</strong>
+      <small>${esc(a.c.bairro || "—")} · ${a.reason}</small>
+    </div>`).join("");
+}
+
+/* ---------- Ranking ---------- */
+const SEV_RANK = { "CRÍTICO": 4, "ALTO": 3, "MODERADO": 2, "BAIXO": 1 };
+const SEV_CLS = { "CRÍTICO":"cr", "ALTO":"al", "MODERADO":"md", "BAIXO":"bx" };
+
+function renderRanking(){
+  let list = S.clients.filter(c => c.isRecurrent);
+  const k = S.sortKey, asc = S.sortAsc;
+  const getVal = (c, k) => {
+    switch(k){
+      case "cliente": return c.cliente.toLowerCase();
+      case "bairro": return (c.bairro || "").toLowerCase();
+      case "total": return c.total;
+      case "osJanela": return c.cluster.count;
+      case "severityRank": return SEV_RANK[c.severity] || 0;
+      case "techSevRank": return SEV_RANK[c.techSev] || 0;
+      case "last": return c.last;
+      default: return 0;
+    }
+  };
+  list.sort((a, b) => {
+    const va = getVal(a, k), vb = getVal(b, k);
+    return (va < vb ? -1 : va > vb ? 1 : 0) * (asc ? 1 : -1);
+  });
+
+  if (!list.length){
+    $("ranking").innerHTML = `<tr><td colspan="9" class="empty">Nenhum cliente reincidente com os filtros atuais.</td></tr>`;
+    return;
+  }
+
+  const cols = [
+    ["cliente","Cliente"], ["bairro","Bairro"], ["total","Total OS","num"],
+    ["osJanela","OS em janela","num"], ["severityRank","Gravidade"],
+    ["techSevRank","Grav. Técnica"],
+    ["","Problema recorrente"],
+    ["last","Última ocorrência"]
+  ];
+  const head = `<thead><tr>${cols.map(([k2,l,c]) =>
+    `<th data-k="${k2}" class="${c||""} ${S.sortKey===k2 ? "sorted"+(S.sortAsc?" asc":"") : ""}">${l}</th>`).join("")}<th>Recomendação</th></tr></thead>`;
+
+  const body = list.map(c => {
+    const rec = c.severity === "CRÍTICO" ? "⚠️ Visita com supervisor"
+      : c.severity === "ALTO" ? "Escalar para supervisão"
+      : c.severity === "MODERADO" ? "Revisar diagnósticos"
+      : "Monitorar";
+    return `<tr class="row" data-cid="${esc(c.cid)}">
+      <td><strong>${esc(c.cliente)}</strong><br><span class="muted">ID ${esc(c.cid)}</span></td>
+      <td>${esc(c.bairro || "—")}</td>
+      <td class="num">${c.total}</td>
+      <td class="num">${c.cluster.count}</td>
+      <td><span class="pill ${SEV_CLS[c.severity]}">${c.severity}</span></td>
+      <td><span class="pill ${SEV_CLS[c.techSev]}">${c.techSev}</span></td>
+      <td>${esc(c.mostFreq)} <span class="muted">(${c.mostFreqCount}×)</span></td>
+      <td>${fmtDay(c.last)}</td>
+      <td class="muted" style="font-size:12px">${rec}</td>
+    </tr>`;
+  }).join("");
+
+  $("ranking").innerHTML = head + "<tbody>" + body + "</tbody>";
+  $("ranking").querySelectorAll("th[data-k]").forEach(th => th.onclick = () => {
+    const kk = th.dataset.k;
+    if (!kk) return;
+    if (S.sortKey === kk) S.sortAsc = !S.sortAsc;
+    else { S.sortKey = kk; S.sortAsc = ["cliente","bairro"].includes(kk); }
+    renderRanking();
+  });
+  $("ranking").querySelectorAll("tr.row").forEach(tr => tr.onclick = () => {
+    openClientModal(tr.dataset.cid);
   });
 }
-$("expand").onclick = () => {
-  const all = S.result.every(c => S.open.has(c.cid));
-  S.open = all ? new Set() : new Set(S.result.map(c => c.cid));
-  $("expand").textContent = all ? "Expandir todos" : "Recolher todos"; renderTable(S.result);
+
+/* ---------- Modal do cliente ---------- */
+function buildRecommendations(c){
+  const recs = [];
+  const p = c.patterns;
+  if (c.severity === "CRÍTICO") recs.push("PRIORIDADE MÁXIMA — agendar visita técnica com supervisão. Cliente com falha crônica não resolvida.");
+  if (c.severity === "ALTO") recs.push("Prioridade alta — escalar para supervisão técnica. Revisar histórico completo.");
+  if (c.severity === "MODERADO") recs.push("Revisar diagnósticos das últimas OS. Confirmar se a causa raiz foi eliminada.");
+  if (c.severity === "BAIXO") recs.push("Monitorar — se reincidir em menos de 30 dias, escalar avaliação.");
+  if (p.semConexao >= 2) recs.push(`Reincidência de sem conexão (${p.semConexao}×): investigar cabo, conector, drop, sinal e equipamento.`);
+  if (p.oscilacao >= 2) recs.push(`Oscilação recorrente (${p.oscilacao}×): verificar atenuação, SNR e estabilidade do enlace.`);
+  if (p.equipamento >= 2) recs.push(`Trocas de equipamento repetidas (${p.equipamento}×): investigar instalação, tomada, aterramento.`);
+  if (p.cabeamento >= 2) recs.push(`Intervenções em cabo/drop/conector repetidas (${p.cabeamento}×): possível degradação física externa.`);
+  if (p.inconclusivo >= 3) recs.push(`Muitos diagnósticos inconclusivos (${p.inconclusivo}×): encaminhar para avaliação técnica especializada.`);
+  if (p.supervisor >= 2) recs.push(`Visitas de supervisão repetidas (${p.supervisor}×): revisar plano de ação.`);
+  if (p.distintos >= 4) recs.push(`Problemas diferentes em curto período: revisar instalação completa do cliente.`);
+  if (recs.length === 0) recs.push("Sem padrão técnico crítico identificado — manter monitoramento padrão.");
+  return recs;
+}
+
+function openClientModal(cid){
+  const c = S.clients.find(x => x.cid === cid);
+  if (!c) return;
+
+  const recs = buildRecommendations(c);
+  const patterns = c.patterns;
+  const patternTags = [];
+  if (patterns.semConexao) patternTags.push(`Sem conexão (${patterns.semConexao}×)`);
+  if (patterns.oscilacao) patternTags.push(`Oscilação (${patterns.oscilacao}×)`);
+  if (patterns.sinalAtenu) patternTags.push(`Atenuação/Sinal (${patterns.sinalAtenu}×)`);
+  if (patterns.equipamento) patternTags.push(`Troca equipamento (${patterns.equipamento}×)`);
+  if (patterns.cabeamento) patternTags.push(`Cabo/Drop/Conector (${patterns.cabeamento}×)`);
+  if (patterns.configModem) patternTags.push(`Reconfig. modem (${patterns.configModem}×)`);
+  if (patterns.inconclusivo) patternTags.push(`Inconclusivo (${patterns.inconclusivo}×)`);
+  if (patterns.supervisor) patternTags.push(`Supervisão (${patterns.supervisor}×)`);
+
+  const techList = Object.entries(c.techCounts).sort((a,b) => b[1]-a[1])
+    .map(([t,n]) => `<span class="pattern-tag">${esc(t)} <strong>${n}</strong></span>`).join("");
+
+  const timeline = c.list.map((r, i) => `
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-date">${fmtDT(r.abertura)} · OS #${esc(r.id || "—")}</div>
+      <div class="tl-subject">${esc(r.assunto)}</div>
+      <div class="tl-diag">Diagnóstico: ${esc(r.diag || "—")}</div>
+      <div class="tl-meta">Técnico: ${esc(r.tecnico || "—")} · ${c.gaps[i] != null ? `${c.gaps[i]} dia(s) desde anterior` : "primeira ocorrência"}</div>
+    </div>`).join("");
+
+  $("modalBody").innerHTML = `
+    <h2>${esc(c.cliente)}</h2>
+    <p class="modal-sub">ID ${esc(c.cid)} · ${esc(c.bairro || "bairro não informado")}</p>
+
+    <div class="badges">
+      <div class="badge-lg">
+        <span>Gravidade OS:</span>
+        <span class="pill ${SEV_CLS[c.severity]}">${c.severity}</span>
+      </div>
+      <div class="badge-lg">
+        <span>Gravidade Técnica:</span>
+        <span class="pill ${SEV_CLS[c.techSev]}">${c.techSev}</span>
+      </div>
+      <div class="badge-lg">
+        <span>Padrões:</span>
+        <span class="muted">${patternTags.length ? patternTags.join(" · ") : "Nenhum"}</span>
+      </div>
+    </div>
+
+    <div class="modal-kpis">
+      <div class="modal-kpi"><b>${c.total}</b><span>Total de OS</span></div>
+      <div class="modal-kpi"><b>${c.cluster.count}</b><span>OS em ${S.filters.win}d</span></div>
+      <div class="modal-kpi"><b>${c.reincidencias}</b><span>Reincidências</span></div>
+      <div class="modal-kpi"><b>${c.minGap ?? "—"}</b><span>Menor intervalo (d)</span></div>
+      <div class="modal-kpi"><b>${c.avgGap != null ? c.avgGap.toFixed(1) : "—"}</b><span>Intervalo médio (d)</span></div>
+      <div class="modal-kpi"><b>${fmtDay(c.last)}</b><span>Última ocorrência</span></div>
+    </div>
+
+    <div class="reco-box">
+      <h4>📋 Recomendação de Intervenção</h4>
+      <ul>${recs.map(r => `<li>${esc(r)}</li>`).join("")}</ul>
+    </div>
+
+    <div class="section-title">Técnicos envolvidos</div>
+    <div class="pattern-tags">${techList || '<span class="muted">Não informado</span>'}</div>
+
+    <div class="section-title">Linha do tempo (${c.list.length} ocorrências)</div>
+    <div class="timeline">${timeline}</div>
+
+    <div class="section-title">Histórico completo</div>
+    <div class="scroll" style="max-height:340px">
+      <table>
+        <thead><tr>
+          <th>IdOS</th><th>Abertura</th><th>Assunto</th><th>Diagnóstico</th>
+          <th>Técnico</th><th>Categoria</th><th>Gap (d)</th>
+        </tr></thead>
+        <tbody>
+          ${c.list.map((r,i) => `
+            <tr>
+              <td>${esc(r.id || "—")}</td>
+              <td>${fmtDT(r.abertura)}</td>
+              <td>${esc(r.assunto)}</td>
+              <td>${esc(r.diag || "—")}</td>
+              <td>${esc(r.tecnico || "—")}</td>
+              <td>${esc(r.categoria || "—")}</td>
+              <td class="num">${c.gaps[i] != null ? c.gaps[i] : "—"}</td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+  $("modal").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+function closeClientModal(){
+  $("modal").classList.remove("open");
+  document.body.style.overflow = "";
+}
+$("modalClose").onclick = closeClientModal;
+$("modal").addEventListener("click", e => { if (e.target.id === "modal") closeClientModal(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeClientModal(); });
+
+/* ---------- Exportações ---------- */
+function csvCell(v){ v = String(v ?? ""); return /[";\n\r]/.test(v) ? '"' + v.replace(/"/g,"\"\"") + '"' : v; }
+function downloadCsv(rows, filename){
+  const blob = new Blob(["\uFEFF" + rows.map(r => r.map(csvCell).join(";")).join("\r\n")],
+    { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+$("btnExportRanking").onclick = () => {
+  const list = S.clients.filter(c => c.isRecurrent).sort((a,b) => (SEV_RANK[b.severity]||0) - (SEV_RANK[a.severity]||0));
+  const rows = [["Cliente","ID","Bairro","Total OS","OS na janela","Gravidade OS","Gravidade Técnica","Problema recorrente","Última ocorrência"]];
+  list.forEach(c => rows.push([
+    c.cliente, c.cid, c.bairro, c.total, c.cluster.count,
+    c.severity, c.techSev, c.mostFreq, fmtDay(c.last)
+  ]));
+  downloadCsv(rows, `ranking_reincidencia_${new Date().toISOString().slice(0,10)}.csv`);
 };
 
-/* ================= Exportar ================= */
-$("export").onclick = () => {
-  if (!S.result.length) return;
-  const cell = v => { v = String(v ?? ""); return /[";\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
-  const lines = [["IdCliente","Cliente","Bairro","Filial","OS na janela","OS no período","IdOs","Abertura","Dias desde a anterior","Assunto","Diagnóstico","Técnico","Fechamento","Dentro da regra"]];
-  for (const c of S.result) c.list.forEach((r, i) => lines.push([c.cid, c.cliente, c.bairro, c.filial, c.n, c.total, r.id, fmtDT(r.abertura), c.gaps[i] ?? "", r.assunto, r.diag, r.tecnico, fmtDT(r.fechamento), c.hit[i] ? "Sim" : "Não"]));
-  const blob = new Blob(["﻿" + lines.map(l => l.map(cell).join(";")).join("\r\n")], {type: "text/csv;charset=utf-8"});
-  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-  a.download = `os_recorrentes_${$("from").value}_a_${$("to").value}.csv`; a.click(); URL.revokeObjectURL(a.href);
+$("btnExportFull").onclick = () => {
+  const rows = [["IdOS","IdCliente","Cliente","Bairro","Técnico","Categoria","Assunto","Diagnóstico","DataAbertura","DataFechamento","Gravidade OS","Gravidade Técnica","OS na janela","Total OS","É reincidente"]];
+  S.clients.forEach(c => {
+    c.list.forEach(r => rows.push([
+      r.id, c.cid, c.cliente, r.bairro, r.tecnico, r.categoria, r.assunto, r.diag,
+      fmtDT(r.abertura), fmtDT(r.fechamento),
+      c.severity, c.techSev, c.cluster.count, c.total, c.isRecurrent ? "Sim" : "Não"
+    ]));
+  });
+  downloadCsv(rows, `relatorio_completo_${new Date().toISOString().slice(0,10)}.csv`);
 };
+
+$("btnPrint").onclick = () => { window.print(); };
 </script>
 </body>
 </html>
