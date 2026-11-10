@@ -5,243 +5,326 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Analisador de Reincidência de Clientes</title>
 <style>
+  /* =========================================
+     TEMA TECNOLÓGICO / CYBERPUNK (HUD)
+     ========================================= */
   :root{
-    --bg:#070b12;--glass:rgba(18,26,40,.55);--glass-2:rgba(14,20,32,.72);
-    --border:rgba(120,160,220,.14);--border-strong:rgba(77,159,255,.45);
-    --ink:#e8eef7;--muted:#8b9ab1;--line:rgba(120,160,220,.12);
-    --accent:#4d9fff;--accent-2:#8b5cf6;--accent-ink:#fff;
-    --grad:linear-gradient(135deg,#2563eb,#7c3aed);
-    --ok:#10b981;--ok-bg:rgba(16,185,129,.12);
-    --warn:#f59e0b;--warn-bg:rgba(245,158,11,.12);
-    --hi:#f97316;--hi-bg:rgba(249,115,22,.14);
-    --crit:#ef4444;--crit-bg:rgba(239,68,68,.15);
-    --dim:#5c6b82;--radius:14px;
-    --shadow:0 10px 34px rgba(0,0,0,.38);
+    --bg:#030712;
+    --glass:rgba(13, 22, 45, 0.65);
+    --glass-2:rgba(17, 29, 58, 0.85);
+    --border:rgba(0, 240, 255, 0.15);
+    --border-strong:rgba(0, 240, 255, 0.5);
+    --ink:#e2f1ff;
+    --muted:#7a94b8;
+    --line:rgba(0, 240, 255, 0.08);
+    
+    /* Cores Neon */
+    --accent:#00f3ff;
+    --accent-2:#b800ff;
+    --grad:linear-gradient(135deg, #00f3ff, #b800ff);
+    
+    --ok:#00ff9d;--ok-bg:rgba(0, 255, 157, 0.1);
+    --warn:#ffb800;--warn-bg:rgba(255, 184, 0, 0.1);
+    --hi:#ff6b00;--hi-bg:rgba(255, 107, 0, 0.15);
+    --crit:#ff0055;--crit-bg:rgba(255, 0, 85, 0.15);
+    
+    --radius:12px;
+    --shadow:0 15px 35px rgba(0, 0, 0, 0.6);
   }
+  
   @media (prefers-color-scheme: light){
     :root{
-      --bg:#eef2f9;--glass:rgba(255,255,255,.70);--glass-2:rgba(255,255,255,.85);
-      --border:rgba(20,60,120,.10);--border-strong:rgba(29,95,209,.45);
-      --ink:#0f1a2b;--muted:#5b6b82;--line:rgba(20,60,120,.10);
-      --accent:#1d5fd1;--accent-2:#6a4bff;
-      --shadow:0 10px 30px rgba(20,50,100,.12);
+      --bg:#f0f4f8;
+      --glass:rgba(255, 255, 255, 0.85);
+      --glass-2:rgba(255, 255, 255, 0.95);
+      --border:rgba(0, 100, 255, 0.15);
+      --border-strong:rgba(0, 100, 255, 0.4);
+      --ink:#0a192f;
+      --muted:#5b7390;
+      --line:rgba(0, 100, 255, 0.1);
+      --accent:#0066ff;
+      --accent-2:#8a2be2;
+      --grad:linear-gradient(135deg, #0066ff, #8a2be2);
+      --shadow:0 10px 30px rgba(0, 50, 150, 0.08);
     }
   }
+  
   *{box-sizing:border-box}
   html,body{margin:0;min-height:100vh;color:var(--ink);background:var(--bg);
     font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    -webkit-font-smoothing:antialiased}
-  ::selection{background:var(--accent);color:#fff}
-  .bg{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;
-    background:radial-gradient(1200px 800px at 15% -10%, rgba(77,159,255,.18), transparent 60%),
-      radial-gradient(1000px 700px at 100% 5%, rgba(124,92,255,.16), transparent 55%),
-      radial-gradient(900px 600px at 50% 120%, rgba(0,224,200,.10), transparent 60%),
-      var(--bg)}
-  .bg::after{content:"";position:absolute;inset:0;
-    background-image:linear-gradient(rgba(120,160,220,.045) 1px,transparent 1px),
-      linear-gradient(90deg,rgba(120,160,220,.045) 1px,transparent 1px);
-    background-size:48px 48px;
-    -webkit-mask-image:radial-gradient(circle at 50% 35%,#000,transparent 78%);
-            mask-image:radial-gradient(circle at 50% 35%,#000,transparent 78%)}
+    -webkit-font-smoothing:antialiased;overflow-x:hidden}
+  ::selection{background:var(--accent);color:#000}
 
-  /* Layout */
+  /* Fundo dinâmico (Canvas + Grid CSS) */
+  .bg-container{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;background:var(--bg)}
+  #bg-canvas{position:absolute;inset:0;z-index:-2}
+  .bg-grid{position:absolute;inset:0;z-index:-1;
+    background:radial-gradient(1000px 800px at 10% -10%, rgba(0,243,255,.08), transparent 60%),
+      radial-gradient(1000px 800px at 100% 110%, rgba(184,0,255,.08), transparent 60%);}
+  .bg-grid::after{content:"";position:absolute;inset:0;
+    background-image:linear-gradient(rgba(0,240,255,.03) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(0,240,255,.03) 1px,transparent 1px);
+    background-size:40px 40px;
+    -webkit-mask-image:radial-gradient(circle at 50% 40%,#000,transparent 80%);
+            mask-image:radial-gradient(circle at 50% 40%,#000,transparent 80%);
+    animation:gridPulse 8s infinite alternate;}
+  @keyframes gridPulse{0%{opacity:0.4}100%{opacity:1}}
+
+  /* Layout Topbar */
   .topbar{position:sticky;top:0;z-index:50;background:var(--glass-2);
-    backdrop-filter:blur(24px) saturate(165%);-webkit-backdrop-filter:blur(24px) saturate(165%);
-    border-bottom:1px solid var(--border)}
-  .topbar-inner{max-width:1400px;margin:0 auto;padding:14px 20px;
+    backdrop-filter:blur(20px) saturate(200%);-webkit-backdrop-filter:blur(20px) saturate(200%);
+    border-bottom:1px solid var(--border);
+    box-shadow:0 5px 25px rgba(0,0,0,0.2)}
+  .topbar-inner{max-width:1400px;margin:0 auto;padding:16px 20px;
     display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
-  .brand{display:flex;align-items:center;gap:12px}
-  .brand-icon{width:42px;height:42px;border-radius:11px;
-    background:var(--grad);display:grid;place-items:center;font-size:20px;
-    box-shadow:0 8px 24px rgba(77,159,255,.4)}
-  .brand h1{margin:0;font-size:18px;letter-spacing:-.02em;
-    background:linear-gradient(100deg,var(--ink),var(--accent));
-    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-  .brand-sub{margin:0;font-size:11px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+  .brand{display:flex;align-items:center;gap:14px}
+  .brand-icon{width:44px;height:44px;border-radius:10px;
+    background:var(--glass);border:1px solid var(--accent);display:grid;place-items:center;font-size:22px;
+    box-shadow:0 0 15px rgba(0,243,255,.3), inset 0 0 10px rgba(0,243,255,.2);color:var(--accent)}
+  .brand h1{margin:0;font-size:19px;letter-spacing:-.02em;font-weight:800;
+    background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 0 8px rgba(0,243,255,0.3))}
+  .brand-sub{margin:0;font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;font-weight:600}
   .topbar-actions{display:flex;gap:8px;flex-wrap:wrap}
 
-  .wrap{max-width:1400px;margin:0 auto;padding:20px 20px 60px}
+  .wrap{max-width:1400px;margin:0 auto;padding:24px 20px 60px}
 
+  /* Cards Base com borda neon */
   .card{background:var(--glass);border:1px solid var(--border);border-radius:var(--radius);
-    padding:18px;margin-bottom:16px;
-    backdrop-filter:blur(24px) saturate(165%);-webkit-backdrop-filter:blur(24px) saturate(165%);
-    box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.06)}
+    padding:20px;margin-bottom:18px;position:relative;overflow:hidden;
+    backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);
+    box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.05)}
+  .card::before{content:"";position:absolute;inset:0;border-radius:var(--radius);pointer-events:none;
+    background:linear-gradient(135deg, rgba(0,243,255,.2) 0%, transparent 30%, transparent 70%, rgba(184,0,255,.2) 100%);
+    -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;padding:1px;}
 
-  /* Botões */
-  button.btn{font:inherit;color:var(--ink);cursor:pointer;background:var(--glass-2);
-    border:1px solid var(--border);border-radius:9px;padding:9px 14px;
-    backdrop-filter:blur(10px);transition:all .15s}
-  button.btn:hover{border-color:var(--border-strong)}
-  button.btn.primary{background:var(--grad);color:#fff;border:none;font-weight:600;
-    box-shadow:0 6px 22px rgba(77,159,255,.35)}
-  button.btn.primary:hover{box-shadow:0 8px 28px rgba(124,92,255,.45)}
-  button.btn:disabled{opacity:.5;cursor:not-allowed}
+  /* Botões Tecnológicos */
+  button.btn{font:600 12px/1 system-ui, sans-serif;color:var(--ink);cursor:pointer;
+    background:var(--glass-2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;
+    text-transform:uppercase;letter-spacing:.05em;transition:all .2s;
+    box-shadow:0 2px 10px rgba(0,0,0,0.2)}
+  button.btn:hover{border-color:var(--accent);color:var(--accent);box-shadow:0 0 15px rgba(0,243,255,0.2)}
+  button.btn.primary{background:var(--glass);color:var(--accent);border:1px solid var(--accent);font-weight:800;
+    box-shadow:0 0 20px rgba(0,243,255,.2), inset 0 0 10px rgba(0,243,255,.1)}
+  button.btn.primary:hover{background:var(--accent);color:#000;box-shadow:0 0 30px rgba(0,243,255,.5)}
+  button.btn:disabled{opacity:.3;cursor:not-allowed;box-shadow:none}
 
-  /* Upload */
-  .drop{border:2px dashed var(--border);border-radius:var(--radius);
-    padding:32px 24px;text-align:center;cursor:pointer;color:var(--muted);
-    background:rgba(255,255,255,.02);transition:all .18s}
-  .drop:hover{border-color:var(--border-strong);background:var(--ok-bg)}
-  .drop.over{border-color:var(--accent);background:var(--ok-bg);transform:scale(.997)}
-  .drop strong{color:var(--ink);display:block;margin-bottom:4px}
-  .files{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
-  .tag{background:var(--ok-bg);border:1px solid var(--border);border-radius:99px;
-    padding:4px 12px;font-size:12px;display:flex;align-items:center;gap:6px}
-  .tag button{border:0;background:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0}
+  /* Upload Area */
+  .drop{border:2px dashed var(--border-strong);border-radius:var(--radius);
+    padding:36px 24px;text-align:center;cursor:pointer;color:var(--muted);
+    background:rgba(0,243,255,.02);transition:all .2s;position:relative;overflow:hidden}
+  .drop:hover{border-color:var(--accent);background:rgba(0,243,255,.08);box-shadow:inset 0 0 30px rgba(0,243,255,.1)}
+  .drop.over{border-color:var(--accent);background:rgba(0,243,255,.15);transform:scale(.99)}
+  .drop strong{color:var(--ink);display:block;margin-bottom:6px;font-size:15px}
+  .files{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .tag{background:var(--glass-2);border:1px solid var(--border);border-radius:6px;
+    padding:6px 12px;font-size:12px;display:flex;align-items:center;gap:8px;font-family:monospace}
+  .tag button{border:0;background:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0;transition:color .2s}
   .tag button:hover{color:var(--crit)}
-  .msg{margin-top:10px;font-size:13px}
-  .msg.err{color:var(--crit)}
+  .msg{margin-top:12px;font-size:13px;font-weight:600}
+  .msg.err{color:var(--crit);text-shadow:0 0 10px rgba(255,0,85,.4)}
 
-  /* Filtros */
-  .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
-  .filters label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted);
-    font-weight:600;text-transform:uppercase;letter-spacing:.04em}
-  .filters input,.filters select{font:inherit;font-size:13px;color:var(--ink);background:var(--glass-2);
-    border:1px solid var(--border);border-radius:8px;padding:8px 10px;min-width:0}
-  .filters input:focus,.filters select:focus{outline:none;border-color:var(--accent);
-    box-shadow:0 0 0 3px rgba(77,159,255,.20)}
-  .filters .date-range{display:flex;gap:6px;align-items:center}
-  .filters .date-range input{flex:1}
+  /* FILTROS */
+  .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+  .filters label{display:flex;flex-direction:column;gap:6px;font-size:10px;color:var(--muted);
+    font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+    
+  .filters > label > input, .filters > label > select {
+    font:500 13px/1.5 system-ui, monospace;color:var(--ink);background:var(--glass-2);
+    border:1px solid var(--border);border-radius:6px;padding:10px 12px;min-width:0;transition:all .2s
+  }
+  .filters > label > input:focus, .filters > label > select:focus {
+    outline:none;border-color:var(--accent);box-shadow:0 0 15px rgba(0,243,255,.2);background:rgba(0,243,255,.05)
+  }
 
-  /* KPIs */
-  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+  .filters .date-range{
+    display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;
+    background:var(--glass-2);border:1px solid var(--border);border-radius:6px;padding:0 12px;
+    transition:all .2s;
+  }
+  .filters .date-range:focus-within{
+    border-color:var(--accent);box-shadow:0 0 15px rgba(0,243,255,.2);background:rgba(0,243,255,.05)
+  }
+  .filters .date-range input{
+    border:none !important;background:transparent !important;box-shadow:none !important;
+    padding:10px 0 !important;font:500 13px/1.5 system-ui, monospace;color:var(--ink);width:100%;min-width:0;
+  }
+  .filters .date-range input:focus{ outline:none; }
+  .filters .date-range input::-webkit-calendar-picker-indicator {cursor:pointer;opacity:0.5;filter:invert(1);transition:opacity .2s}
+  .filters .date-range input::-webkit-calendar-picker-indicator:hover {opacity:1}
+  .filters .date-range span{font-size:11px;color:var(--muted);text-align:center;font-weight:700;padding-top:1px}
+
+  @media (min-width: 900px) { .filters label:first-child { grid-column: span 2; } }
+
+  /* KPIs (HUD Cards) */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:14px;margin-bottom:18px}
   .kpi{background:var(--glass);border:1px solid var(--border);border-radius:var(--radius);
-    padding:16px 18px;cursor:default;
-    backdrop-filter:blur(24px) saturate(165%);-webkit-backdrop-filter:blur(24px) saturate(165%);
-    box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.06);
-    transition:transform .15s,box-shadow .15s}
-  .kpi:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(77,159,255,.18)}
-  .kpi b{display:block;font-size:28px;line-height:1.1;letter-spacing:-.01em;
+    padding:18px;cursor:pointer;position:relative;user-select:none;overflow:hidden;
+    backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+    box-shadow:var(--shadow);transition:all .2s cubic-bezier(0.4, 0, 0.2, 1)}
+  .kpi::before{content:"";position:absolute;top:0;left:0;width:4px;height:100%;background:transparent;transition:background .2s}
+  .kpi:hover{transform:translateY(-3px);border-color:var(--border-strong);box-shadow:0 15px 35px rgba(0,243,255,.15)}
+  .kpi:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .kpi.active{border-color:var(--accent);box-shadow:0 0 25px rgba(0,243,255,.25), inset 0 0 15px rgba(0,243,255,.1)}
+  .kpi.active::before{background:var(--accent)}
+  
+  .kpi b{display:block;font-size:32px;line-height:1;letter-spacing:-.02em;
     font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-    font-variant-numeric:tabular-nums}
-  .kpi span{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;
-    display:block;margin-top:4px;font-weight:600}
+    font-variant-numeric:tabular-nums;text-shadow:0 0 15px currentColor}
+  .kpi span{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;
+    display:block;margin-top:8px;font-weight:700}
+    
   .kpi.crit b{color:var(--crit)} .kpi.hi b{color:var(--hi)}
   .kpi.warn b{color:var(--warn)} .kpi.ok b{color:var(--ok)}
-  .kpi.info b{color:var(--accent)}
+  .kpi.info b{color:var(--accent)} .kpi.violet b{color:var(--accent-2)}
+  
+  .kpi.crit.active{border-color:var(--crit);box-shadow:0 0 25px rgba(255,0,85,.25)}
+  .kpi.hi.active{border-color:var(--hi);box-shadow:0 0 25px rgba(255,107,0,.25)}
+  .kpi.warn.active{border-color:var(--warn);box-shadow:0 0 25px rgba(255,184,0,.25)}
+  .kpi.ok.active{border-color:var(--ok);box-shadow:0 0 25px rgba(0,255,157,.25)}
 
   /* Alerts */
-  .alerts{background:linear-gradient(135deg,rgba(239,68,68,.08),rgba(249,115,22,.08));
-    border:1px solid rgba(239,68,68,.25)}
-  .alerts h2{margin:0 0 12px;font-size:15px;display:flex;align-items:center;gap:8px}
-  .alert-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}
-  .alert-item{background:var(--glass-2);border:1px solid var(--border);border-radius:10px;
-    padding:12px 14px;cursor:pointer;transition:all .15s}
-  .alert-item:hover{border-color:var(--crit);transform:translateY(-1px)}
-  .alert-item strong{display:block;font-size:13px;margin-bottom:2px}
-  .alert-item small{color:var(--muted);font-size:11px}
+  .alerts{background:linear-gradient(135deg, rgba(255,0,85,.05), rgba(255,107,0,.05));
+    border:1px solid rgba(255,0,85,.3)}
+  .alerts h2{margin:0 0 14px;font-size:15px;display:flex;align-items:center;gap:8px;color:var(--crit)}
+  .alert-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+  .alert-item{background:var(--glass-2);border:1px solid var(--border);border-radius:8px;
+    padding:14px;cursor:pointer;transition:all .2s}
+  .alert-item:hover{border-color:var(--crit);transform:translateX(4px);box-shadow:-4px 0 0 var(--crit)}
+  .alert-item strong{display:block;font-size:13px;margin-bottom:4px;color:var(--ink)}
+  .alert-item small{color:var(--muted);font-size:11px;font-family:monospace}
 
   /* Charts */
-  .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;margin-bottom:16px}
+  .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-bottom:18px}
   .chart-card{background:var(--glass);border:1px solid var(--border);border-radius:var(--radius);
-    padding:16px;backdrop-filter:blur(24px) saturate(165%);
-    -webkit-backdrop-filter:blur(24px) saturate(165%);
-    box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.06)}
-  .chart-card h3{margin:0 0 12px;font-size:13px;font-weight:600;color:var(--ink);
-    text-transform:uppercase;letter-spacing:.04em}
-  .chart-card .chart-svg{width:100%;height:auto;display:block;color:var(--ink)}
+    padding:18px;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+    box-shadow:var(--shadow)}
+  .chart-card h3{margin:0 0 16px;font-size:11px;font-weight:800;color:var(--muted);
+    text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--line);padding-bottom:8px}
+  .chart-card .chart-svg{width:100%;height:auto;display:block;color:var(--ink);filter:drop-shadow(0 0 8px rgba(0,243,255,0.2))}
   .chart-card .empty{padding:24px;text-align:center;color:var(--muted);font-size:12px}
-  .legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;font-size:11px}
-  .legend span{display:flex;align-items:center;gap:5px;color:var(--muted)}
-  .legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;font-size:11px}
+  .legend span{display:flex;align-items:center;gap:6px;color:var(--muted)}
+  .legend i{width:12px;height:12px;border-radius:3px;display:inline-block;box-shadow:0 0 10px currentColor}
 
-  /* Tabela */
+  /* Tabela (Terminal) */
   table{width:100%;border-collapse:collapse;font-size:13px}
-  th{font-size:11px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;
-    cursor:pointer;user-select:none;padding:10px;text-align:left;
-    border-bottom:1px solid var(--line);white-space:nowrap;
-    background:var(--glass-2);position:sticky;top:0;backdrop-filter:blur(14px)}
-  th:hover{color:var(--accent)}
-  th.sorted{color:var(--accent)}
+  th{font-size:10px;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;font-weight:800;
+    cursor:pointer;user-select:none;padding:12px 10px;text-align:left;
+    border-bottom:2px solid var(--border-strong);white-space:nowrap;
+    background:rgba(0,243,255,.03);position:sticky;top:0;backdrop-filter:blur(10px)}
+  th:hover{background:rgba(0,243,255,.08)}
   th.sorted::after{content:" ▼"} th.sorted.asc::after{content:" ▲"}
-  td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
-  tr.row{cursor:pointer}
-  tr.row:hover td{background:var(--ok-bg)}
-  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  td{padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr.row{cursor:pointer;transition:background .1s}
+  tr.row:hover td{background:rgba(0,243,255,.05);border-bottom-color:var(--accent)}
+  td.num{text-align:right;font-variant-numeric:tabular-nums;font-family:monospace;font-size:14px}
   .scroll{overflow-x:auto;max-height:600px}
-  .scroll::-webkit-scrollbar{height:8px;width:8px}
-  .scroll::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:8px}
+  .scroll::-webkit-scrollbar{height:6px;width:6px}
+  .scroll::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:6px}
 
-  /* Pills de gravidade */
-  .pill{display:inline-block;border-radius:99px;padding:2px 10px;font-size:11px;font-weight:700;
-    letter-spacing:.03em;text-transform:uppercase}
-  .pill.bx{background:rgba(77,159,255,.14);color:#4d9fff}
-  .pill.md{background:var(--warn-bg);color:var(--warn)}
-  .pill.al{background:var(--hi-bg);color:var(--hi)}
-  .pill.cr{background:var(--crit-bg);color:var(--crit)}
-  .pill.na{background:rgba(120,140,170,.15);color:var(--muted)}
+  /* Pills (Badges de Status) */
+  .pill{display:inline-block;border-radius:4px;padding:3px 10px;font-size:10px;font-weight:800;
+    letter-spacing:.05em;text-transform:uppercase;font-family:monospace;
+    border:1px solid transparent}
+  .pill.bx{background:rgba(0,243,255,.1);color:var(--accent);border-color:rgba(0,243,255,.3)}
+  .pill.md{background:var(--warn-bg);color:var(--warn);border-color:rgba(255,184,0,.3)}
+  .pill.al{background:var(--hi-bg);color:var(--hi);border-color:rgba(255,107,0,.3)}
+  .pill.cr{background:var(--crit-bg);color:var(--crit);border-color:rgba(255,0,85,.3)}
+  .pill.na{background:rgba(120,140,170,.1);color:var(--muted);border-color:rgba(120,140,170,.3)}
+  .pill.ext{background:rgba(255,107,0,.1);color:var(--hi);border-color:rgba(255,107,0,.3)}
+  .pill.int{background:rgba(0,243,255,.1);color:var(--accent);border-color:rgba(0,243,255,.3)}
+  .pill.ind{background:rgba(120,140,170,.1);color:var(--muted);border-color:rgba(120,140,170,.3)}
 
   /* Modal */
-  .modal-overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.72);
-    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  .modal-overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.85);
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
     display:none;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto}
   .modal-overlay.open{display:flex}
-  .modal{background:var(--glass-2);border:1px solid var(--border-strong);border-radius:16px;
-    max-width:1200px;width:100%;padding:24px;position:relative;
-    backdrop-filter:blur(30px) saturate(165%);-webkit-backdrop-filter:blur(30px) saturate(165%);
-    box-shadow:0 30px 90px rgba(0,0,0,.6);margin:auto}
-  .modal-close{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:50%;
-    border:1px solid var(--border);background:var(--glass);color:var(--ink);cursor:pointer;
-    font-size:16px;display:grid;place-items:center;transition:all .15s}
-  .modal-close:hover{border-color:var(--crit);color:var(--crit)}
-  .modal h2{margin:0 0 4px;font-size:22px;letter-spacing:-.02em}
-  .modal .modal-sub{color:var(--muted);font-size:13px;margin:0 0 18px}
+  .modal{background:var(--glass-2);border:1px solid var(--accent);border-radius:16px;
+    max-width:1200px;width:100%;padding:30px;position:relative;
+    backdrop-filter:blur(30px) saturate(200%);-webkit-backdrop-filter:blur(30px) saturate(200%);
+    box-shadow:0 0 50px rgba(0,243,255,.15);margin:auto}
+  .modal-close{position:absolute;top:18px;right:18px;width:36px;height:36px;border-radius:8px;
+    border:1px solid var(--border);background:var(--glass);color:var(--muted);cursor:pointer;
+    font-size:16px;display:grid;place-items:center;transition:all .2s}
+  .modal-close:hover{border-color:var(--crit);color:var(--crit);background:var(--crit-bg)}
+  .modal h2{margin:0 0 6px;font-size:24px;letter-spacing:-.02em;color:var(--accent)}
+  .modal .modal-sub{color:var(--muted);font-size:13px;margin:0 0 24px;font-family:monospace}
 
-  .modal-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
-  .modal-kpi{background:var(--glass);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
-  .modal-kpi b{display:block;font-size:20px;font-weight:700;
+  .modal-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
+  .modal-kpi{background:rgba(0,243,255,.03);border:1px solid var(--border);border-radius:8px;padding:12px}
+  .modal-kpi b{display:block;font-size:22px;font-weight:800;color:var(--accent);text-shadow:0 0 10px rgba(0,243,255,.3);
     font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-  .modal-kpi span{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+  .modal-kpi span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700}
 
-  .badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-  .badge-lg{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:10px;
+  .badges{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+  .badge-lg{display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:8px;
     border:1px solid var(--border);background:var(--glass);font-size:12px}
   .badge-lg strong{font-size:13px}
 
-  .reco-box{background:linear-gradient(135deg,rgba(77,159,255,.08),rgba(124,92,255,.08));
-    border:1px solid rgba(77,159,255,.25);border-radius:10px;padding:14px 16px;margin-bottom:16px}
-  .reco-box h4{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--accent)}
-  .reco-box ul{margin:0;padding-left:18px}
-  .reco-box li{font-size:13px;margin-bottom:5px;line-height:1.5}
+  .reco-box{background:rgba(0,243,255,.05);
+    border:1px solid rgba(0,243,255,.2);border-left:4px solid var(--accent);border-radius:8px;padding:18px;margin-bottom:20px}
+  .reco-box h4{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--accent)}
+  .reco-box ul{margin:0;padding-left:20px}
+  .reco-box li{font-size:13px;margin-bottom:6px;line-height:1.5;color:var(--ink)}
 
-  .section-title{margin:20px 0 10px;font-size:12px;text-transform:uppercase;
-    letter-spacing:.05em;color:var(--muted);font-weight:700}
+  .section-title{margin:24px 0 12px;font-size:11px;text-transform:uppercase;
+    letter-spacing:.08em;color:var(--accent);font-weight:800;border-bottom:1px solid var(--line);padding-bottom:6px}
 
   /* Timeline */
-  .timeline{position:relative;padding-left:22px;margin:8px 0 16px}
+  .timeline{position:relative;padding-left:22px;margin:10px 0 20px}
   .timeline::before{content:"";position:absolute;left:8px;top:8px;bottom:8px;width:2px;
-    background:linear-gradient(to bottom,var(--accent),var(--accent-2))}
-  .tl-item{position:relative;padding:8px 0 12px 16px;border-bottom:1px dashed var(--line)}
+    background:var(--grad)}
+  .tl-item{position:relative;padding:10px 0 14px 16px;border-bottom:1px dashed var(--line)}
   .tl-item:last-child{border-bottom:none}
-  .tl-dot{position:absolute;left:-18px;top:12px;width:12px;height:12px;border-radius:50%;
-    background:var(--accent);border:2px solid var(--glass-2);box-shadow:0 0 10px var(--accent)}
-  .tl-date{font-size:12px;font-weight:700;color:var(--accent);margin-bottom:2px}
-  .tl-subject{font-size:13px;font-weight:600;margin-bottom:2px}
-  .tl-diag{font-size:12px;color:var(--muted);margin-bottom:2px}
+  .tl-dot{position:absolute;left:-18px;top:14px;width:12px;height:12px;border-radius:50%;
+    background:var(--accent);border:2px solid var(--bg);box-shadow:0 0 10px var(--accent)}
+  .tl-date{font-size:11px;font-weight:800;color:var(--accent);margin-bottom:4px;font-family:monospace}
+  .tl-subject{font-size:13px;font-weight:700;margin-bottom:4px}
+  .tl-diag{font-size:12px;color:var(--muted);margin-bottom:4px}
   .tl-meta{font-size:11px;color:var(--muted);font-style:italic}
 
-  .pattern-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-  .pattern-tag{background:var(--glass);border:1px solid var(--border);border-radius:99px;
-    padding:3px 10px;font-size:11px;color:var(--ink)}
+  /* Split timeline */
+  .split-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:10px 0 20px}
+  .split-col{background:var(--glass);border:1px solid var(--border);border-radius:10px;padding:16px}
+  .split-col h4{margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;
+    display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:800}
+  .split-col.ext{border-color:rgba(255,107,0,.3);background:rgba(255,107,0,.03)}
+  .split-col.ext h4{color:var(--hi)}
+  .split-col.int{border-color:rgba(0,243,255,.3);background:rgba(0,243,255,.03)}
+  .split-col.int h4{color:var(--accent)}
+  .split-col .count{background:var(--bg);border:1px solid var(--border);border-radius:4px;
+    padding:2px 8px;font-size:11px;font-weight:800;font-family:monospace}
+  .split-col.ext .timeline::before{background:var(--hi)}
+  .split-col.ext .tl-dot{background:var(--hi);box-shadow:0 0 10px var(--hi)}
+  .split-col.ext .tl-date{color:var(--hi)}
+  .split-col .tl-item{padding:8px 0 12px 16px}
+  .split-col .empty{padding:16px;text-align:center;font-size:12px;color:var(--muted);font-style:italic}
+
+  .pattern-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .pattern-tag{background:var(--glass-2);border:1px solid var(--border);border-radius:4px;
+    padding:4px 12px;font-size:11px;color:var(--ink);font-family:monospace}
 
   .hidden{display:none!important}
   .muted{color:var(--muted)}
-  .empty{padding:30px;text-align:center;color:var(--muted)}
+  .empty{padding:30px;text-align:center;color:var(--muted);font-size:13px}
 
   @media (max-width:760px){
-    .topbar-inner{padding:12px 14px}
-    .wrap{padding:14px 14px 40px}
-    .brand h1{font-size:15px}
+    .topbar-inner{padding:12px 16px}
+    .wrap{padding:16px}
+    .brand h1{font-size:16px}
     .charts-grid{grid-template-columns:1fr}
     .filters{grid-template-columns:1fr 1fr}
-    .modal{padding:18px}
+    .modal{padding:20px}
+    .split-grid{grid-template-columns:1fr}
   }
 
   @media print{
-    .topbar,.bg,.drop,.files,.msg,.filters,.modal-close,
+    .topbar,.bg-container,.drop,.files,.msg,.filters,.modal-close,
     button.btn,.alerts + .charts-grid button, .hidden-print{display:none!important}
     body{background:#fff;color:#000}
-    .card,.kpi,.chart-card{background:#fff;border:1px solid #ccc;box-shadow:none;
+    .card,.kpi,.chart-card,.split-col{background:#fff;border:1px solid #ccc;box-shadow:none;
       backdrop-filter:none;break-inside:avoid}
     .scroll{max-height:none;overflow:visible}
     table{font-size:11px}
@@ -250,12 +333,16 @@
 </head>
 <body>
 
-<div class="bg" aria-hidden="true"></div>
+<!-- Fundo Interativo -->
+<div class="bg-container" aria-hidden="true">
+  <canvas id="bg-canvas"></canvas>
+  <div class="bg-grid"></div>
+</div>
 
 <header class="topbar">
   <div class="topbar-inner">
     <div class="brand">
-      <div class="brand-icon">📊</div>
+      <div class="brand-icon">⚡</div>
       <div>
         <h1>Analisador de Reincidência</h1>
         <p class="brand-sub">Inteligência Operacional · Provedor de Internet</p>
@@ -289,7 +376,7 @@
         <label>Período
           <div class="date-range">
             <input type="date" id="fFrom">
-            <span class="muted" style="font-size:11px">a</span>
+            <span class="muted">a</span>
             <input type="date" id="fTo">
           </div>
         </label>
@@ -298,6 +385,12 @@
         <label>Técnico<select id="fTecnico"><option value="">Todos</option></select></label>
         <label>Assunto<select id="fAssunto"><option value="">Todos</option></select></label>
         <label>Categoria<select id="fCategoria"><option value="">Todas</option></select></label>
+        <label>Tipo de atendimento<select id="fTipo">
+          <option value="">Todos</option>
+          <option value="EXTERNO">Externo (visita técnica)</option>
+          <option value="INTERNO">Interno (procedimento)</option>
+          <option value="INDEFINIDO">Indefinido</option>
+        </select></label>
         <label>Gravidade<select id="fGravidade">
           <option value="">Todas</option>
           <option value="BAIXO">Baixo</option>
@@ -320,6 +413,7 @@
 
     <!-- Gráficos -->
     <section class="charts-grid">
+      <div class="chart-card"><h3>Externo × Interno</h3><div id="chart8"></div><div class="legend" id="legend8"></div></div>
       <div class="chart-card"><h3>Reincidência por Gravidade</h3><div id="chart1"></div><div class="legend" id="legend1"></div></div>
       <div class="chart-card"><h3>Top 10 Clientes Mais Reincidentes</h3><div id="chart2"></div></div>
       <div class="chart-card"><h3>Reincidência por Bairro</h3><div id="chart3"></div></div>
@@ -331,8 +425,11 @@
 
     <!-- Ranking -->
     <section class="card">
-      <h2 style="margin:0 0 12px;font-size:15px">Ranking de Clientes por Prioridade</h2>
-      <p class="muted" style="margin:0 0 12px;font-size:12px">Clique em um cliente para abrir a ficha completa.</p>
+      <h2 style="margin:0 0 12px;font-size:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;color:var(--accent)">
+        Ranking de Clientes por Prioridade
+        <span id="kpiFilterChip"></span>
+      </h2>
+      <p class="muted" style="margin:0 0 16px;font-size:12px">Clique em um cliente para abrir a ficha completa. Clique em um KPI de gravidade acima para filtrar o ranking. Use o filtro <strong>Tipo de atendimento</strong> para ver só externos ou só internos.</p>
       <div class="scroll"><table id="ranking"></table></div>
     </section>
   </div>
@@ -346,6 +443,9 @@
   </div>
 </div>
 
+<!-- ========================================================= -->
+<!-- LÓGICA DO APLICATIVO (INALTERADA)                         -->
+<!-- ========================================================= -->
 <script>
 "use strict";
 /* ============================================================
@@ -464,6 +564,45 @@ const COLS = {
   status:["statusos","status"]
 };
 
+/* ============================================================
+   CLASSIFICAÇÃO EXTERNO × INTERNO
+   ============================================================ */
+const KW_EXT_NORM = [
+  "visita","vt","campo","externo",
+  "instalac","reinstalac","vistoria","reparo","manutencao",
+  "trocadeequip","trocaequip","retiradadeequip","retiradaequip",
+  "pontoadicional","ativacao","religacao","adequacao",
+  "cabo","drop","conector","fusao","aterramento","puxament"
+].map(norm);
+
+const KW_INT_NORM = [
+  "procedimentointerno","interno","remoto","backoffice",
+  "analise","verificacao","configuracao","reconfigura",
+  "bloqueio","desbloqueio","liberacao","suspensao",
+  "cobranca","financeiro","retencao","cancelamento",
+  "contato","ligacao","telefone","whatsapp","chat"
+].map(norm);
+
+function classifyTipo(r){
+  const cat = norm(r.categoria);
+  const sub = norm(r.assunto);
+  const dia = norm(r.diag);
+  
+  if (cat){
+    if (KW_INT_NORM.some(k => cat.includes(k))) return "INTERNO";
+    if (KW_EXT_NORM.some(k => cat.includes(k))) return "EXTERNO";
+  }
+  if (sub){
+    if (KW_INT_NORM.some(k => sub.includes(k))) return "INTERNO";
+    if (KW_EXT_NORM.some(k => sub.includes(k))) return "EXTERNO";
+  }
+  if (dia){
+    if (KW_INT_NORM.some(k => dia.includes(k))) return "INTERNO";
+    if (KW_EXT_NORM.some(k => dia.includes(k))) return "EXTERNO";
+  }
+  return "INDEFINIDO";
+}
+
 function tableToOs(rows){
   let h = -1, map = {};
   for (let i = 0; i < Math.min(rows.length, 15); i++){
@@ -485,11 +624,10 @@ function tableToOs(rows){
     const cid = g("cid"), ab = toMs(g("abertura"));
     if (cid == null || cid === "" || ab == null){ skipped++; continue; }
     const id = g("id") != null ? String(g("id")).trim() : null;
-    // FIX: dedup por IdOS + DataAbertura (mantém visitas com datas diferentes)
     const dedupKey = id ? (id + "|" + ab) : null;
     if (dedupKey && seenIds.has(dedupKey)){ dups++; continue; }
     if (dedupKey) seenIds.add(dedupKey);
-    out.push({
+    const row = {
       id, cid: String(cid).trim(),
       cliente: String(g("cliente") ?? "").trim(),
       bairro: String(g("bairro") ?? "").trim(),
@@ -503,7 +641,9 @@ function tableToOs(rows){
       execucao: toMs(g("execucao")),
       fechamento: toMs(g("fechamento")),
       day: Math.floor(ab / DAY)
-    });
+    };
+    row.tipo = classifyTipo(row);
+    out.push(row);
   }
   return { out, skipped, dups };
 }
@@ -608,6 +748,18 @@ function analyzeClient(cid, list, windowDays){
     const d = r.diag || "—";
     if (d.toUpperCase() !== "NÃO INFORMADO") diagCounts[d] = (diagCounts[d] || 0) + 1;
   });
+
+  // Split externo × interno
+  const extList = list.filter(r => r.tipo === "EXTERNO");
+  const intList = list.filter(r => r.tipo === "INTERNO");
+  const indList = list.filter(r => r.tipo === "INDEFINIDO");
+  const extGaps = extList.map((r, i) => i ? r.day - extList[i-1].day : null);
+  const intGaps = intList.map((r, i) => i ? r.day - intList[i-1].day : null);
+  const extCluster = maxInWindow(extList.map(r => r.day), windowDays);
+  const intCluster = maxInWindow(intList.map(r => r.day), windowDays);
+  const extSeverity = extCluster.count >= 2 ? severityFromCount(extCluster.count) : null;
+  const intSeverity = intCluster.count >= 2 ? severityFromCount(intCluster.count) : null;
+
   return {
     cid, cliente: list[0].cliente || `Cliente ${cid}`, bairro: list[0].bairro,
     list, days, gaps, cluster, severity, techSev, patterns,
@@ -623,7 +775,15 @@ function analyzeClient(cid, list, windowDays){
     techCounts,
     diagCounts,
     distintoSubjects: patterns.distintos,
-    isRecurrent: cluster.count >= 2
+    isRecurrent: cluster.count >= 2,
+    // Split
+    extList, intList, indList,
+    extGaps, intGaps,
+    extCount: extList.length,
+    intCount: intList.length,
+    indCount: indList.length,
+    extCluster, intCluster,
+    extSeverity, intSeverity
   };
 }
 
@@ -632,9 +792,10 @@ const S = {
   all: [], files: [],
   clients: [],
   filtered: [],
-  filters: { from:null, to:null, bairro:"", cliente:"", tecnico:"", assunto:"", categoria:"", gravidade:"", win:30 },
+  filters: { from:null, to:null, bairro:"", cliente:"", tecnico:"", assunto:"", categoria:"", tipo:"", gravidade:"", win:30 },
   sortKey: "severityRank", sortAsc: false,
-  openCid: null
+  openCid: null,
+  kpiFilter: null
 };
 
 /* ---------- Upload ---------- */
@@ -664,7 +825,6 @@ async function load(list){
 function rebuild(){
   const seen = new Set(), all = [];
   for (const f of S.files) for (const r of f.rows){
-    // FIX: chave IdOS + DataAbertura (visitas no mesmo IdOS com datas diferentes coexistem)
     const key = (r.id || "c" + r.cid) + "|" + r.abertura;
     if (seen.has(key)) continue;
     seen.add(key); all.push(r);
@@ -682,8 +842,6 @@ function rebuild(){
 
   const days = all.map(r => r.day);
   const mn = Math.min(...days), mx = Math.max(...days);
-  $("fFrom").value = iso(mn);
-  $("fTo").value = iso(mx);
 
   const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort();
   const fill = (id, list, allLabel) => {
@@ -696,10 +854,22 @@ function rebuild(){
   fill("fAssunto", uniq(all.map(r => r.assunto)), "Todos");
   fill("fCategoria", uniq(all.map(r => r.categoria)), "Todas");
 
-  S.filters = { from:mn, to:mx, bairro:"", cliente:"", tecnico:"", assunto:"", categoria:"", gravidade:"", win:30 };
+  $("fFrom").value = iso(mn);
+  $("fTo").value = iso(mx);
+  $("fBairro").value = "";
+  $("fCliente").value = "";
+  $("fTecnico").value = "";
+  $("fAssunto").value = "";
+  $("fCategoria").value = "";
+  $("fTipo").value = "";
+  $("fGravidade").value = "";
+  $("fWin").value = "30";
+
+  S.filters = { from:mn, to:mx, bairro:"", cliente:"", tecnico:"", assunto:"", categoria:"", tipo:"", gravidade:"", win:30 };
+  S.kpiFilter = null;
 
   bindFilters();
-  applyFilters();   // FIX: aplica filtros no boot (antes ficava vazio no 1º render)
+  applyFilters();
   updateAll();
 }
 
@@ -707,8 +877,8 @@ function bindFilters(){
   const handlers = [
     ["fFrom","change"], ["fTo","change"],
     ["fBairro","change"], ["fCliente","input"], ["fTecnico","change"],
-    ["fAssunto","change"], ["fCategoria","change"], ["fGravidade","change"],
-    ["fWin","input"]
+    ["fAssunto","change"], ["fCategoria","change"], ["fTipo","change"],
+    ["fGravidade","change"], ["fWin","input"]
   ];
   for (const [id, ev] of handlers){
     const el = $(id);
@@ -727,6 +897,7 @@ function applyFilters(){
   S.filters.tecnico = $("fTecnico").value;
   S.filters.assunto = $("fAssunto").value;
   S.filters.categoria = $("fCategoria").value;
+  S.filters.tipo = $("fTipo").value;
   S.filters.gravidade = $("fGravidade").value;
   S.filters.win = Math.max(1, Number($("fWin").value) || 30);
 
@@ -738,6 +909,7 @@ function applyFilters(){
     if (F.tecnico && r.tecnico !== F.tecnico) return false;
     if (F.assunto && r.assunto !== F.assunto) return false;
     if (F.categoria && r.categoria !== F.categoria) return false;
+    if (F.tipo && r.tipo !== F.tipo) return false;
     return true;
   });
 
@@ -760,7 +932,19 @@ function applyFilters(){
   S.filtered = clients;
 }
 
-/* ---------- Atualização geral ---------- */
+function getOsBaseSemTipo(){
+  const F = S.filters;
+  return S.all.filter(r => {
+    if (F.from != null && r.day < F.from) return false;
+    if (F.to != null && r.day > F.to) return false;
+    if (F.bairro && r.bairro !== F.bairro) return false;
+    if (F.tecnico && r.tecnico !== F.tecnico) return false;
+    if (F.assunto && r.assunto !== F.assunto) return false;
+    if (F.categoria && r.categoria !== F.categoria) return false;
+    return true;
+  });
+}
+
 function updateAll(){
   renderKPIs();
   renderCharts();
@@ -782,22 +966,91 @@ function renderKPIs(){
   const critico = recorrentes.filter(c => c.severity === "CRÍTICO").length;
   const pct = totalClientes ? (recorrentes.length / totalClientes * 100) : 0;
 
+  const baseOs = getOsBaseSemTipo();
+  const osExt = baseOs.filter(r => r.tipo === "EXTERNO").length;
+  const osInt = baseOs.filter(r => r.tipo === "INTERNO").length;
+  const osInd = baseOs.filter(r => r.tipo === "INDEFINIDO").length;
+  const extCriticos = S.clients.filter(c => c.extSeverity === "CRÍTICO").length;
+
   const kpis = [
-    { v: totalClientes, l: "Clientes analisados", cls: "info" },
-    { v: totalOS, l: "Ordens de serviço", cls: "info" },
-    { v: recorrentes.length, l: "Clientes reincidentes (<" + S.filters.win + "d)", cls: "hi" },
-    { v: baixo, l: "Gravidade baixa", cls: "ok" },
-    { v: moderado, l: "Gravidade moderada", cls: "warn" },
-    { v: alto, l: "Gravidade alta", cls: "hi" },
-    { v: critico, l: "Gravidade crítica", cls: "crit" },
-    { v: pct.toFixed(1).replace(".", ",") + "%", l: "Taxa de reincidência", cls: "info" }
+    { v: totalClientes, l: "Clientes analisados", cls: "info", kpi: "all",
+      tip: "Clique para limpar o filtro do ranking" },
+    { v: totalOS, l: "Ordens de serviço", cls: "info", kpi: "all",
+      tip: "Clique para limpar o filtro do ranking" },
+    { v: osExt, l: "OS externas · visita técnica", cls: "hi", tipo: "EXTERNO",
+      tip: "Filtrar por atendimentos externos" },
+    { v: osInt, l: "OS internas · procedimento", cls: "info", tipo: "INTERNO",
+      tip: "Filtrar por atendimentos internos" },
+    { v: osInd, l: "OS indefinidas", cls: "violet", tipo: "INDEFINIDO",
+      tip: "Filtrar por OS não classificadas" },
+    { v: recorrentes.length, l: "Reincidentes (<" + S.filters.win + "d)", cls: "hi", kpi: "all",
+      tip: "Clique para ver todos os reincidentes" },
+    { v: extCriticos, l: "Reincidência externa crítica", cls: "crit",
+      tip: "Clientes com ≥5 visitas externas na janela" },
+    { v: baixo, l: "Gravidade baixa", cls: "ok", kpi: "BAIXO",
+      tip: "Filtrar ranking por gravidade BAIXO" },
+    { v: moderado, l: "Gravidade moderada", cls: "warn", kpi: "MODERADO",
+      tip: "Filtrar ranking por gravidade MODERADO" },
+    { v: alto, l: "Gravidade alta", cls: "hi", kpi: "ALTO",
+      tip: "Filtrar ranking por gravidade ALTO" },
+    { v: critico, l: "Gravidade crítica", cls: "crit", kpi: "CRÍTICO",
+      tip: "Filtrar ranking por gravidade CRÍTICO" },
+    { v: pct.toFixed(1).replace(".", ",") + "%", l: "Taxa de reincidência", cls: "info", kpi: "all",
+      tip: "Clique para limpar o filtro do ranking" }
   ];
-  $("kpis").innerHTML = kpis.map(k =>
-    `<div class="kpi ${k.cls}"><b>${k.v}</b><span>${k.l}</span></div>`).join("");
+
+  $("kpis").innerHTML = kpis.map(k => {
+    const isActive = (k.tipo && S.filters.tipo === k.tipo) || (k.kpi && S.kpiFilter && k.kpi === S.kpiFilter);
+    const attr = k.tipo ? `data-tipo="${k.tipo}"` : `data-kpi="${k.kpi || ""}"`;
+    return `<div class="kpi ${k.cls} ${isActive ? "active" : ""}"
+              ${attr} role="button" tabindex="0" title="${esc(k.tip)}"
+              aria-pressed="${isActive ? "true" : "false"}">
+      <b>${k.v}</b><span>${k.l}</span></div>`;
+  }).join("");
+
+  $("kpis").querySelectorAll(".kpi").forEach(el => {
+    el.onclick = () => {
+      if (el.dataset.tipo) setTipoFilter(el.dataset.tipo);
+      else setKpiFilter(el.dataset.kpi);
+    };
+    el.onkeydown = e => {
+      if (e.key === "Enter" || e.key === " "){
+        e.preventDefault();
+        if (el.dataset.tipo) setTipoFilter(el.dataset.tipo);
+        else setKpiFilter(el.dataset.kpi);
+      }
+    };
+  });
+}
+
+function setKpiFilter(kpi){
+  const SEVS = ["BAIXO","MODERADO","ALTO","CRÍTICO"];
+  if (SEVS.includes(kpi)){
+    S.kpiFilter = (S.kpiFilter === kpi) ? null : kpi;
+  } else {
+    S.kpiFilter = null;
+  }
+  renderKPIs();
+  renderRanking();
+  const tbl = $("ranking");
+  if (tbl && tbl.closest("section")){
+    tbl.closest("section").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+}
+
+function setTipoFilter(tipo){
+  const cur = $("fTipo").value;
+  $("fTipo").value = (cur === tipo) ? "" : tipo;
+  applyFilters();
+  updateAll();
+  const tbl = $("ranking");
+  if (tbl && tbl.closest("section")){
+    tbl.closest("section").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
 }
 
 /* ---------- SVG Charts ---------- */
-const PALETTE = ["#4d9fff","#8b5cf6","#f59e0b","#ef4444","#06b6a4","#ec4899","#22c55e","#eab308","#a855f7","#0ea5e9"];
+const PALETTE = ["#00f3ff","#b800ff","#ffb800","#ff0055","#00ff9d","#ec4899","#22c55e","#eab308","#a855f7","#0ea5e9"];
 
 function svgDonut(items, size = 200, thickness = 28){
   const total = items.reduce((s, it) => s + it.value, 0);
@@ -813,7 +1066,7 @@ function svgDonut(items, size = 200, thickness = 28){
   return `<svg viewBox="0 0 ${size} ${size}" class="chart-svg" style="max-width:220px;margin:0 auto">${paths}</svg>`;
 }
 
-function svgBarH(items, color = "#4d9fff"){
+function svgBarH(items, color = "#00f3ff"){
   if (!items.length) return '<div class="empty">Sem dados</div>';
   const rowH = 26, w = 420, h = items.length * rowH + 10;
   const max = Math.max(...items.map(i => i.value), 1);
@@ -828,7 +1081,7 @@ function svgBarH(items, color = "#4d9fff"){
   return `<svg viewBox="0 0 ${w} ${h}" class="chart-svg">${rows}</svg>`;
 }
 
-function svgLine(points, color = "#4d9fff"){
+function svgLine(points, color = "#00f3ff"){
   if (!points.length) return '<div class="empty">Sem dados</div>';
   const w = 540, h = 200, pad = { l:34, r:12, t:12, b:30 };
   const max = Math.max(...points.map(p => p.y), 1);
@@ -848,7 +1101,7 @@ function svgLine(points, color = "#4d9fff"){
   return `<svg viewBox="0 0 ${w} ${h}" class="chart-svg">${axis}${line}${dots}${labels}</svg>`;
 }
 
-function svgBars(items, color = "#8b5cf6"){
+function svgBars(items, color = "#b800ff"){
   if (!items.length) return '<div class="empty">Sem dados</div>';
   const w = 420, h = 200, pad = { l:12, r:12, t:20, b:32 };
   const max = Math.max(...items.map(i => i.value), 1);
@@ -867,28 +1120,45 @@ function svgBars(items, color = "#8b5cf6"){
 }
 
 /* ---------- Gráficos ---------- */
+const TIPO_COLORS = { EXTERNO:"#ff6b00", INTERNO:"#00f3ff", INDEFINIDO:"#7a94b8" };
+
 function renderCharts(){
+  const baseOs = getOsBaseSemTipo();
+  const extN = baseOs.filter(r => r.tipo === "EXTERNO").length;
+  const intN = baseOs.filter(r => r.tipo === "INTERNO").length;
+  const indN = baseOs.filter(r => r.tipo === "INDEFINIDO").length;
+  const splitItems = [
+    { label: "Externo (visita técnica)", value: extN, color: TIPO_COLORS.EXTERNO },
+    { label: "Interno (procedimento)",   value: intN, color: TIPO_COLORS.INTERNO },
+    { label: "Indefinido",                value: indN, color: TIPO_COLORS.INDEFINIDO }
+  ].filter(x => x.value > 0);
+  $("chart8").innerHTML = svgDonut(splitItems);
+  const totalBase = extN + intN + indN;
+  $("legend8").innerHTML = totalBase ? splitItems.map(it => {
+    const pct = ((it.value / totalBase) * 100).toFixed(1).replace(".",",");
+    return `<span><i style="background:${it.color};color:${it.color}"></i>${esc(it.label)} — <strong>${it.value}</strong> (${pct}%)</span>`;
+  }).join("") : "";
+
   const recorrentes = S.clients.filter(c => c.isRecurrent);
   const sevCounts = { BAIXO:0, MODERADO:0, ALTO:0, CRÍTICO:0 };
-  recorrentes.forEach(c => sevCounts[c.severity]++);
-  const sevColors = { BAIXO:"#4d9fff", MODERADO:"#f59e0b", ALTO:"#f97316", CRÍTICO:"#ef4444" };
-
+  recorrentes.forEach(c => { if (c.severity) sevCounts[c.severity]++; });
+  const sevColors = { BAIXO:"#00f3ff", MODERADO:"#ffb800", ALTO:"#ff6b00", CRÍTICO:"#ff0055" };
   const sevItems = Object.entries(sevCounts).filter(([,v]) => v > 0).map(([k,v]) => ({
     label: k, value: v, color: sevColors[k]
   }));
   $("chart1").innerHTML = svgDonut(sevItems);
   $("legend1").innerHTML = sevItems.map(it =>
-    `<span><i style="background:${it.color}"></i>${it.label} (${it.value})</span>`).join("") || "";
+    `<span><i style="background:${it.color};color:${it.color}"></i>${it.label} (${it.value})</span>`).join("") || "";
 
   const top10 = [...recorrentes].sort((a,b) => b.cluster.count - a.cluster.count).slice(0,10)
-    .map(c => ({ label: c.cliente, value: c.cluster.count, color: sevColors[c.severity] }));
+    .map(c => ({ label: c.cliente, value: c.cluster.count, color: sevColors[c.severity] || "#00f3ff" }));
   $("chart2").innerHTML = svgBarH(top10);
 
   const bairroCounts = {};
   recorrentes.forEach(c => { if (c.bairro) bairroCounts[c.bairro] = (bairroCounts[c.bairro] || 0) + 1; });
   const bairroItems = Object.entries(bairroCounts).sort((a,b) => b[1]-a[1]).slice(0,8)
     .map(([l,v]) => ({ label: l, value: v }));
-  $("chart3").innerHTML = svgBarH(bairroItems, "#8b5cf6");
+  $("chart3").innerHTML = svgBarH(bairroItems, "#b800ff");
 
   const assuntoCounts = {};
   recorrentes.forEach(c => c.list.forEach(r => {
@@ -906,7 +1176,7 @@ function renderCharts(){
     else buckets[String(n)] = (buckets[String(n)] || 0) + 1;
   });
   const histItems = Object.entries(buckets).map(([l,v]) => ({ label: l, value: v }));
-  $("chart5").innerHTML = svgBars(histItems, "#06b6a4");
+  $("chart5").innerHTML = svgBars(histItems, "#00ff9d");
 
   const byWeek = {};
   const minDay = S.all.length ? Math.min(...S.all.map(r => r.day)) : 0;
@@ -916,7 +1186,7 @@ function renderCharts(){
   });
   const weekPoints = Object.entries(byWeek).sort((a,b) => Number(a[0]) - Number(b[0]))
     .map(([w, n]) => ({ x: fmtDay(Number(w)).slice(0,5), y: n }));
-  $("chart6").innerHTML = svgLine(weekPoints.slice(-20), "#4d9fff");
+  $("chart6").innerHTML = svgLine(weekPoints.slice(-20), "#00f3ff");
 
   const techRec = {};
   recorrentes.forEach(c => c.list.forEach(r => {
@@ -924,7 +1194,7 @@ function renderCharts(){
   }));
   const techItems = Object.entries(techRec).sort((a,b) => b[1]-a[1]).slice(0,8)
     .map(([l,v]) => ({ label: l, value: v }));
-  $("chart7").innerHTML = svgBarH(techItems, "#f97316");
+  $("chart7").innerHTML = svgBarH(techItems, "#ff6b00");
 }
 
 /* ---------- Alertas ---------- */
@@ -934,16 +1204,18 @@ function renderAlerts(){
   const high = recorrentes.filter(c => c.severity === "ALTO" && c.patterns.inconclusivo >= 2);
   const inconclusive = recorrentes.filter(c => c.patterns.inconclusivo >= 3);
   const equipSwap = recorrentes.filter(c => c.patterns.equipamento >= 2);
+  const extCritical = S.clients.filter(c => c.extSeverity === "CRÍTICO" && c.severity !== "CRÍTICO");
 
   const alerts = [];
   const seen = new Set();
-  const addAlert = (c, reason) => {
+  const addAlert = (c, reason, ext) => {
     const key = c.cid + "|" + reason;
     if (seen.has(key)) return;
     seen.add(key);
-    alerts.push({ c, reason });
+    alerts.push({ c, reason, ext });
   };
   critical.forEach(c => addAlert(c, "Gravidade CRÍTICA — " + c.cluster.count + " OS em " + S.filters.win + " dias"));
+  extCritical.forEach(c => addAlert(c, "Reincidência externa crítica — " + c.extCluster.count + " visitas em " + S.filters.win + " dias", true));
   high.forEach(c => addAlert(c, "Gravidade ALTA com diagnósticos inconclusivos"));
   inconclusive.forEach(c => addAlert(c, c.patterns.inconclusivo + " diagnósticos inconclusivos"));
   equipSwap.forEach(c => addAlert(c, c.patterns.equipamento + " trocas de equipamento"));
@@ -951,7 +1223,7 @@ function renderAlerts(){
   if (!alerts.length){ $("alerts").classList.add("hidden"); return; }
   $("alerts").classList.remove("hidden");
   $("alertsList").innerHTML = alerts.slice(0, 12).map(a =>
-    `<div class="alert-item" onclick="openClientModal('${esc(a.c.cid)}')">
+    `<div class="alert-item ${a.ext ? "alert-ext" : ""}" onclick="openClientModal('${esc(a.c.cid)}')">
       <strong>${esc(a.c.cliente)}</strong>
       <small>${esc(a.c.bairro || "—")} · ${a.reason}</small>
     </div>`).join("");
@@ -960,17 +1232,23 @@ function renderAlerts(){
 /* ---------- Ranking ---------- */
 const SEV_RANK = { "CRÍTICO": 4, "ALTO": 3, "MODERADO": 2, "BAIXO": 1 };
 const SEV_CLS = { "CRÍTICO":"cr", "ALTO":"al", "MODERADO":"md", "BAIXO":"bx" };
+const TIPO_CLS = { "EXTERNO":"ext", "INTERNO":"int", "INDEFINIDO":"ind" };
 
 function renderRanking(){
   let list = S.clients.filter(c => c.isRecurrent);
+  if (S.kpiFilter) list = list.filter(c => c.severity === S.kpiFilter);
+
   const k = S.sortKey, asc = S.sortAsc;
   const getVal = (c, k) => {
     switch(k){
       case "cliente": return c.cliente.toLowerCase();
       case "bairro": return (c.bairro || "").toLowerCase();
       case "total": return c.total;
+      case "extCount": return c.extCount;
+      case "intCount": return c.intCount;
       case "osJanela": return c.cluster.count;
       case "severityRank": return SEV_RANK[c.severity] || 0;
+      case "extSevRank": return SEV_RANK[c.extSeverity] || 0;
       case "techSevRank": return SEV_RANK[c.techSev] || 0;
       case "last": return c.last;
       default: return 0;
@@ -981,14 +1259,37 @@ function renderRanking(){
     return (va < vb ? -1 : va > vb ? 1 : 0) * (asc ? 1 : -1);
   });
 
+  const chip = $("kpiFilterChip");
+  if (chip){
+    const chips = [];
+    if (S.kpiFilter) chips.push(`<span class="pill ${SEV_CLS[S.kpiFilter]}" style="vertical-align:middle">Filtro: ${S.kpiFilter}</span>`);
+    if (S.filters.tipo) chips.push(`<span class="pill ${TIPO_CLS[S.filters.tipo]}" style="vertical-align:middle">Tipo: ${S.filters.tipo}</span>`);
+    chip.innerHTML = chips.length
+      ? chips.join(" ") + ` <button class="btn" id="btnClearKpi" type="button" style="padding:4px 10px;font-size:11px;vertical-align:middle;margin-left:6px">✕ limpar</button>`
+      : "";
+    const b = $("btnClearKpi");
+    if (b) b.onclick = (e) => {
+      e.stopPropagation();
+      S.kpiFilter = null;
+      $("fTipo").value = "";
+      applyFilters();
+      updateAll();
+    };
+  }
+
   if (!list.length){
-    $("ranking").innerHTML = `<tr><td colspan="9" class="empty">Nenhum cliente reincidente com os filtros atuais.</td></tr>`;
+    const msg = S.kpiFilter
+      ? `Nenhum cliente com gravidade <strong>${S.kpiFilter}</strong> nos filtros atuais.`
+      : "Nenhum cliente reincidente com os filtros atuais.";
+    $("ranking").innerHTML = `<tr><td colspan="11" class="empty">${msg}</td></tr>`;
     return;
   }
 
   const cols = [
     ["cliente","Cliente"], ["bairro","Bairro"], ["total","Total OS","num"],
+    ["extCount","Ext.","num"], ["intCount","Int.","num"],
     ["osJanela","OS em janela","num"], ["severityRank","Gravidade"],
+    ["extSevRank","Grav. Ext."],
     ["techSevRank","Grav. Técnica"],
     ["","Problema recorrente"],
     ["last","Última ocorrência"]
@@ -1001,15 +1302,21 @@ function renderRanking(){
       : c.severity === "ALTO" ? "Escalar para supervisão"
       : c.severity === "MODERADO" ? "Revisar diagnósticos"
       : "Monitorar";
+    const extPill = c.extSeverity
+      ? `<span class="pill ${SEV_CLS[c.extSeverity]}">${c.extSeverity}</span>`
+      : `<span class="muted" style="font-size:11px">—</span>`;
     return `<tr class="row" data-cid="${esc(c.cid)}">
-      <td><strong>${esc(c.cliente)}</strong><br><span class="muted">ID ${esc(c.cid)}</span></td>
+      <td><strong>${esc(c.cliente)}</strong><br><span class="muted" style="font-family:monospace;font-size:11px">ID ${esc(c.cid)}</span></td>
       <td>${esc(c.bairro || "—")}</td>
       <td class="num">${c.total}</td>
+      <td class="num"><span class="pill ext" style="font-size:10px">${c.extCount}</span></td>
+      <td class="num"><span class="pill int" style="font-size:10px">${c.intCount}</span></td>
       <td class="num">${c.cluster.count}</td>
-      <td><span class="pill ${SEV_CLS[c.severity]}">${c.severity}</span></td>
-      <td><span class="pill ${SEV_CLS[c.techSev]}">${c.techSev}</span></td>
+      <td><span class="pill ${SEV_CLS[c.severity] || "na"}">${c.severity || "—"}</span></td>
+      <td>${extPill}</td>
+      <td><span class="pill ${SEV_CLS[c.techSev] || "na"}">${c.techSev || "—"}</span></td>
       <td>${esc(c.mostFreq)} <span class="muted">(${c.mostFreqCount}×)</span></td>
-      <td>${fmtDay(c.last)}</td>
+      <td style="font-family:monospace;font-size:12px">${fmtDay(c.last)}</td>
       <td class="muted" style="font-size:12px">${rec}</td>
     </tr>`;
   }).join("");
@@ -1032,6 +1339,7 @@ function buildRecommendations(c){
   const recs = [];
   const p = c.patterns;
   if (c.severity === "CRÍTICO") recs.push("PRIORIDADE MÁXIMA — agendar visita técnica com supervisão. Cliente com falha crônica não resolvida.");
+  if (c.extSeverity === "CRÍTICO" && c.severity !== "CRÍTICO") recs.push("Reincidência EXTERNA crítica — investigar causa raiz das visitas de campo.");
   if (c.severity === "ALTO") recs.push("Prioridade alta — escalar para supervisão técnica. Revisar histórico completo.");
   if (c.severity === "MODERADO") recs.push("Revisar diagnósticos das últimas OS. Confirmar se a causa raiz foi eliminada.");
   if (c.severity === "BAIXO") recs.push("Monitorar — se reincidir em menos de 30 dias, escalar avaliação.");
@@ -1044,6 +1352,16 @@ function buildRecommendations(c){
   if (p.distintos >= 4) recs.push(`Problemas diferentes em curto período: revisar instalação completa do cliente.`);
   if (recs.length === 0) recs.push("Sem padrão técnico crítico identificado — manter monitoramento padrão.");
   return recs;
+}
+
+function renderTlItem(r, gap){
+  return `<div class="tl-item">
+    <div class="tl-dot"></div>
+    <div class="tl-date">${fmtDT(r.abertura)} · OS #${esc(r.id || "—")}</div>
+    <div class="tl-subject">${esc(r.assunto)}</div>
+    <div class="tl-diag">Diagnóstico: ${esc(r.diag || "—")}</div>
+    <div class="tl-meta">Técnico: ${esc(r.tecnico || "—")} · ${gap != null ? `${gap} dia(s) desde anterior` : "primeira ocorrência"}</div>
+  </div>`;
 }
 
 function openClientModal(cid){
@@ -1065,14 +1383,16 @@ function openClientModal(cid){
   const techList = Object.entries(c.techCounts).sort((a,b) => b[1]-a[1])
     .map(([t,n]) => `<span class="pattern-tag">${esc(t)} <strong>${n}</strong></span>`).join("");
 
-  const timeline = c.list.map((r, i) => `
-    <div class="tl-item">
-      <div class="tl-dot"></div>
-      <div class="tl-date">${fmtDT(r.abertura)} · OS #${esc(r.id || "—")}</div>
-      <div class="tl-subject">${esc(r.assunto)}</div>
-      <div class="tl-diag">Diagnóstico: ${esc(r.diag || "—")}</div>
-      <div class="tl-meta">Técnico: ${esc(r.tecnico || "—")} · ${c.gaps[i] != null ? `${c.gaps[i]} dia(s) desde anterior` : "primeira ocorrência"}</div>
-    </div>`).join("");
+  const extTimeline = c.extList.length
+    ? c.extList.map((r, i) => renderTlItem(r, c.extGaps[i])).join("")
+    : `<div class="empty">Nenhuma visita externa registrada.</div>`;
+  const intTimeline = c.intList.length
+    ? c.intList.map((r, i) => renderTlItem(r, c.intGaps[i])).join("")
+    : `<div class="empty">Nenhum procedimento interno registrado.</div>`;
+
+  const extSevPill = c.extSeverity
+    ? `<span class="pill ${SEV_CLS[c.extSeverity]}">${c.extSeverity}</span>`
+    : `<span class="pill na">—</span>`;
 
   $("modalBody").innerHTML = `
     <h2>${esc(c.cliente)}</h2>
@@ -1082,6 +1402,10 @@ function openClientModal(cid){
       <div class="badge-lg">
         <span>Gravidade OS:</span>
         <span class="pill ${SEV_CLS[c.severity]}">${c.severity}</span>
+      </div>
+      <div class="badge-lg">
+        <span>Grav. Externa (só visitas):</span>
+        ${extSevPill}
       </div>
       <div class="badge-lg">
         <span>Gravidade Técnica:</span>
@@ -1095,11 +1419,11 @@ function openClientModal(cid){
 
     <div class="modal-kpis">
       <div class="modal-kpi"><b>${c.total}</b><span>Total de OS</span></div>
-      <div class="modal-kpi"><b>${c.cluster.count}</b><span>OS em ${S.filters.win}d</span></div>
-      <div class="modal-kpi"><b>${c.reincidencias}</b><span>Reincidências</span></div>
-      <div class="modal-kpi"><b>${c.minGap ?? "—"}</b><span>Menor intervalo (d)</span></div>
-      <div class="modal-kpi"><b>${c.avgGap != null ? c.avgGap.toFixed(1) : "—"}</b><span>Intervalo médio (d)</span></div>
-      <div class="modal-kpi"><b>${fmtDay(c.last)}</b><span>Última ocorrência</span></div>
+      <div class="modal-kpi"><b style="color:var(--hi)">${c.extCount}</b><span>Visitas externas</span></div>
+      <div class="modal-kpi"><b style="color:var(--accent)">${c.intCount}</b><span>Proced. internos</span></div>
+      <div class="modal-kpi"><b>${c.extCluster.count}</b><span>Ext. em ${S.filters.win}d</span></div>
+      <div class="modal-kpi"><b>${c.cluster.count}</b><span>Total em ${S.filters.win}d</span></div>
+      <div class="modal-kpi"><b style="color:var(--accent-2)">${fmtDay(c.last)}</b><span>Última ocorrência</span></div>
     </div>
 
     <div class="reco-box">
@@ -1107,24 +1431,34 @@ function openClientModal(cid){
       <ul>${recs.map(r => `<li>${esc(r)}</li>`).join("")}</ul>
     </div>
 
+    <div class="section-title">Linha do tempo — separada por tipo</div>
+    <div class="split-grid">
+      <div class="split-col ext">
+        <h4>🔧 Visitas Externas <span class="count">${c.extCount}</span></h4>
+        <div class="timeline">${extTimeline}</div>
+      </div>
+      <div class="split-col int">
+        <h4>🖥️ Procedimentos Internos <span class="count">${c.intCount}</span></h4>
+        <div class="timeline">${intTimeline}</div>
+      </div>
+    </div>
+
     <div class="section-title">Técnicos envolvidos</div>
     <div class="pattern-tags">${techList || '<span class="muted">Não informado</span>'}</div>
 
-    <div class="section-title">Linha do tempo (${c.list.length} ocorrências)</div>
-    <div class="timeline">${timeline}</div>
-
-    <div class="section-title">Histórico completo</div>
+    <div class="section-title">Histórico completo (${c.list.length} ocorrências)</div>
     <div class="scroll" style="max-height:340px">
       <table>
         <thead><tr>
-          <th>IdOS</th><th>Abertura</th><th>Assunto</th><th>Diagnóstico</th>
+          <th>IdOS</th><th>Tipo</th><th>Abertura</th><th>Assunto</th><th>Diagnóstico</th>
           <th>Técnico</th><th>Categoria</th><th>Gap (d)</th>
         </tr></thead>
         <tbody>
           ${c.list.map((r,i) => `
             <tr>
-              <td>${esc(r.id || "—")}</td>
-              <td>${fmtDT(r.abertura)}</td>
+              <td style="font-family:monospace">${esc(r.id || "—")}</td>
+              <td><span class="pill ${TIPO_CLS[r.tipo]}" style="font-size:10px">${r.tipo}</span></td>
+              <td style="font-family:monospace;font-size:12px">${fmtDT(r.abertura)}</td>
               <td>${esc(r.assunto)}</td>
               <td>${esc(r.diag || "—")}</td>
               <td>${esc(r.tecnico || "—")}</td>
@@ -1159,28 +1493,129 @@ function downloadCsv(rows, filename){
 }
 
 $("btnExportRanking").onclick = () => {
-  const list = S.clients.filter(c => c.isRecurrent).sort((a,b) => (SEV_RANK[b.severity]||0) - (SEV_RANK[a.severity]||0));
-  const rows = [["Cliente","ID","Bairro","Total OS","OS na janela","Gravidade OS","Gravidade Técnica","Problema recorrente","Última ocorrência"]];
+  let base = S.clients.filter(c => c.isRecurrent);
+  if (S.kpiFilter) base = base.filter(c => c.severity === S.kpiFilter);
+  const list = base.sort((a,b) => (SEV_RANK[b.severity]||0) - (SEV_RANK[a.severity]||0));
+  const rows = [["Cliente","ID","Bairro","Total OS","OS Externas","OS Internas","OS em janela","Gravidade OS","Grav. Externa","Gravidade Técnica","Problema recorrente","Última ocorrência"]];
   list.forEach(c => rows.push([
-    c.cliente, c.cid, c.bairro, c.total, c.cluster.count,
-    c.severity, c.techSev, c.mostFreq, fmtDay(c.last)
+    c.cliente, c.cid, c.bairro, c.total, c.extCount, c.intCount, c.cluster.count,
+    c.severity, c.extSeverity || "—", c.techSev, c.mostFreq, fmtDay(c.last)
   ]));
   downloadCsv(rows, `ranking_reincidencia_${new Date().toISOString().slice(0,10)}.csv`);
 };
 
 $("btnExportFull").onclick = () => {
-  const rows = [["IdOS","IdCliente","Cliente","Bairro","Técnico","Categoria","Assunto","Diagnóstico","DataAbertura","DataFechamento","Gravidade OS","Gravidade Técnica","OS na janela","Total OS","É reincidente"]];
+  const rows = [["IdOS","IdCliente","Cliente","Bairro","Técnico","Categoria","Tipo","Assunto","Diagnóstico","DataAbertura","DataFechamento","Gravidade OS","Grav. Externa","Gravidade Técnica","OS na janela","Total OS","É reincidente"]];
   S.clients.forEach(c => {
     c.list.forEach(r => rows.push([
-      r.id, c.cid, c.cliente, r.bairro, r.tecnico, r.categoria, r.assunto, r.diag,
+      r.id, c.cid, c.cliente, r.bairro, r.tecnico, r.categoria, r.tipo, r.assunto, r.diag,
       fmtDT(r.abertura), fmtDT(r.fechamento),
-      c.severity, c.techSev, c.cluster.count, c.total, c.isRecurrent ? "Sim" : "Não"
+      c.severity, c.extSeverity || "—", c.techSev, c.cluster.count, c.total, c.isRecurrent ? "Sim" : "Não"
     ]));
   });
   downloadCsv(rows, `relatorio_completo_${new Date().toISOString().slice(0,10)}.csv`);
 };
 
 $("btnPrint").onclick = () => { window.print(); };
+</script>
+
+<!-- ========================================================= -->
+<!-- LÓGICA DO FUNDO INTERATIVO (ISOLADA)                      -->
+<!-- ========================================================= -->
+<script>
+(function initInteractiveBackground() {
+  const canvas = document.getElementById('bg-canvas');
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  let width, height;
+  let particles = [];
+  const mouse = { x: null, y: null, radius: 150 };
+
+  function resize() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  class Particle {
+    constructor() {
+      this.x = Math.random() * width;
+      this.y = Math.random() * height;
+      this.vx = (Math.random() - 0.5) * 0.4;
+      this.vy = (Math.random() - 0.5) * 0.4;
+      this.radius = Math.random() * 1.5 + 0.5;
+    }
+    update() {
+      this.x += this.vx;
+      this.y += this.vy;
+      if (this.x < 0 || this.x > width) this.vx *= -1;
+      if (this.y < 0 || this.y > height) this.vy *= -1;
+    }
+    draw() {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0, 243, 255, 0.4)'; // Ciano
+      ctx.fill();
+    }
+  }
+
+  // Ajusta a quantidade de partículas baseado na tela
+  const particleCount = Math.min(Math.floor((width * height) / 12000), 120);
+  for (let i = 0; i < particleCount; i++) particles.push(new Particle());
+
+  window.addEventListener('mousemove', (e) => {
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+  });
+  
+  window.addEventListener('mouseout', () => {
+    mouse.x = null;
+    mouse.y = null;
+  });
+
+  function animate() {
+    requestAnimationFrame(animate);
+    ctx.clearRect(0, 0, width, height);
+
+    for (let i = 0; i < particles.length; i++) {
+      particles[i].update();
+      particles[i].draw();
+
+      // Conecta partículas próximas
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 120) {
+          ctx.beginPath();
+          ctx.strokeStyle = `rgba(0, 243, 255, ${0.15 - dist/120 * 0.15})`;
+          ctx.lineWidth = 0.5;
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.stroke();
+        }
+      }
+
+      // Conecta ao mouse
+      if (mouse.x != null && mouse.y != null) {
+        const dx = particles[i].x - mouse.x;
+        const dy = particles[i].y - mouse.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < mouse.radius) {
+          ctx.beginPath();
+          ctx.strokeStyle = `rgba(184, 0, 255, ${0.4 - dist/mouse.radius * 0.4})`; // Roxo
+          ctx.lineWidth = 0.8;
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(mouse.x, mouse.y);
+          ctx.stroke();
+        }
+      }
+    }
+  }
+  animate();
+})();
 </script>
 </body>
 </html>
