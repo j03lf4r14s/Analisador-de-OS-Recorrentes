@@ -47,6 +47,8 @@ html{background:var(--bg);scroll-behavior:smooth;scroll-padding-top:88px}
 body{margin:0;min-width:320px;min-height:100vh;overflow-x:hidden;background:var(--bg);color:var(--ink);
   font-family:"Manrope","Inter",system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.55;
   -webkit-font-smoothing:antialiased}
+/* ATUALIZAÇÃO 1: trava scroll quando o modal abre */
+body.has-modal{overflow:hidden}
 button,input,select{font:inherit}
 button,a,input,select,summary{-webkit-tap-highlight-color:transparent}
 button{color:inherit;cursor:pointer;border:0;background:none}
@@ -64,7 +66,6 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,su
 .spin{animation:spin .9s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* Header */
 .site-header{position:fixed;inset:0 0 auto;z-index:80;height:76px;display:flex;align-items:center;gap:32px;
   padding:0 max(32px,calc((100vw - 1380px) / 2));border-bottom:1px solid var(--line);background:var(--header-bg);
   backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%)}
@@ -89,7 +90,6 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,su
 .theme-toggle>span{display:grid;place-items:center;transition:transform .25s}
 .mobile-menu-button{display:none}
 
-/* Buttons */
 .button{min-height:39px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 15px;
   border:1px solid transparent;border-radius:11px;font-size:12px;font-weight:700;line-height:1.2;
   transition:transform .2s,box-shadow .2s,border-color .2s,background .2s,opacity .2s}
@@ -116,7 +116,6 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,su
 .text-button{display:inline-flex;align-items:center;gap:6px;padding:4px;border:0;background:transparent;font-size:11px;font-weight:650}
 .text-button.danger{color:var(--danger)}
 
-/* Hero */
 .hero-scene{position:relative;height:138svh;min-height:940px}
 .hero-stage{position:sticky;top:0;height:100svh;min-height:690px;overflow:hidden;background:var(--bg)}
 .hero-stage::after{content:"";position:absolute;inset:auto 0 0;height:180px;background:linear-gradient(transparent,var(--bg));pointer-events:none}
@@ -195,7 +194,6 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,su
 .scroll-cue-icon{width:28px;height:28px;display:grid;place-items:center;border:1px solid var(--line-strong);border-radius:50%;color:var(--accent);animation:bob 2s ease-in-out infinite}
 @keyframes bob{50%{transform:translateY(5px)}}
 
-/* Workspace and panels */
 .workspace{position:relative;padding-top:85px;padding-bottom:125px;scroll-margin-top:58px}
 .workspace::before{content:"";position:absolute;z-index:-1;width:700px;height:700px;right:-350px;top:280px;border-radius:50%;background:var(--orb-two);filter:blur(150px);opacity:.45;pointer-events:none}
 .workspace-intro{display:grid;grid-template-columns:1.2fr .8fr;align-items:end;gap:60px;margin-bottom:38px}
@@ -209,7 +207,6 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,su
 .local-badge{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border:1px solid var(--line);border-radius:30px;color:var(--muted);background:var(--input);font-size:9px;font-weight:650}
 .local-badge svg{color:var(--accent)}
 
-/* Upload */
 .upload-panel{padding:23px;margin-bottom:18px}
 .upload-heading{margin-bottom:18px}
 .drop-zone{position:relative;min-height:140px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:25px;overflow:hidden;text-align:center;border:1px dashed rgba(var(--accent-rgb),.38);border-radius:15px;background:rgba(var(--accent-rgb),.035);transition:border-color .25s,background .25s,transform .25s,box-shadow .25s;cursor:pointer}
@@ -245,7 +242,6 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,su
 .empty-footer-actions{display:flex;flex:0 0 auto;gap:8px}
 .demo-disclaimer{margin:10px 0 0;color:var(--muted);font-size:9px}
 
-/* Filters */
 .filters-panel{padding:23px;margin-bottom:38px}
 .filters-heading{margin-bottom:21px}
 .filter-header-actions{display:flex;align-items:center;gap:8px}
@@ -301,7 +297,6 @@ select option{color:var(--ink);background:var(--panel-solid)}
 .rule-callout p{margin:1px 0 0;color:var(--muted);font-size:10px;line-height:1.65}
 .rule-callout strong{color:var(--ink);font-weight:650}
 
-/* Empty workspace */
 .empty-workspace-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}
 .empty-guide,.schema-card{padding:28px}
 .empty-guide h3,.schema-card h3{margin:10px 0 20px;font-size:23px;line-height:1.25;letter-spacing:-.035em}
@@ -317,7 +312,6 @@ select option{color:var(--ink);background:var(--panel-solid)}
 .schema-list>div>span{color:var(--muted);font-size:8px;text-transform:uppercase}
 .schema-list p{grid-column:1/-1;margin:2px 0 0;color:var(--muted);font-size:9px}
 
-/* KPI */
 .kpi-section,.insights-section{margin-bottom:38px}
 .results-section-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:25px;margin-bottom:16px}
 .results-section-heading>span{color:var(--muted);font-size:9px}
@@ -338,7 +332,6 @@ select option{color:var(--ink);background:var(--panel-solid)}
 .kpi-label{margin-top:9px;font-size:10px;font-weight:650}
 .kpi-detail{margin-top:auto;padding-top:9px;color:var(--muted);font-size:8px;line-height:1.4}
 
-/* Insights */
 .insights-layout{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px}
 .insight-card{min-width:0;padding:20px}
 .timeline-panel{grid-column:span 8}
@@ -405,7 +398,6 @@ select option{color:var(--ink);background:var(--panel-solid)}
 .empty-chart{min-height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--dim);font-size:10px}
 .empty-chart.compact{min-height:190px}
 
-/* Results */
 .results-panel{overflow:hidden}
 .results-header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:22px 23px;border-bottom:1px solid var(--line)}
 .results-header h2{margin:6px 0 0;font-size:17px;letter-spacing:-.025em}
@@ -472,7 +464,6 @@ select option{color:var(--ink);background:var(--panel-solid)}
 .pagination .icon-button{width:28px;height:28px}
 .page-number{font-family:"JetBrains Mono",monospace}
 
-/* Methodology */
 .methodology-section{position:relative;padding:115px 0 105px;overflow:hidden;border-top:1px solid var(--line);background:var(--bg-soft)}
 .methodology-section::before{content:"";position:absolute;width:600px;height:600px;left:-300px;top:10%;border-radius:50%;background:var(--orb-one);filter:blur(140px)}
 .method-heading{position:relative;display:grid;grid-template-columns:1.15fr .85fr;align-items:end;gap:70px;margin-bottom:45px}
@@ -516,7 +507,6 @@ select option{color:var(--ink);background:var(--panel-solid)}
 .method-notes summary{color:var(--ink);font-size:10px;font-weight:650;line-height:1.5;cursor:pointer}
 .method-notes p{margin:12px 0 0;color:var(--muted);font-size:9px;line-height:1.75}
 
-/* Footer */
 .site-footer{padding:55px 0 20px;border-top:1px solid var(--line);background:var(--bg)}
 .footer-grid{display:grid;grid-template-columns:.85fr 1.35fr .8fr;gap:55px;align-items:start}
 .footer-brand{display:flex;gap:12px}
@@ -528,7 +518,6 @@ select option{color:var(--ink);background:var(--panel-solid)}
 .footer-meta{display:flex;flex-direction:column;gap:7px;color:var(--muted);font-family:"JetBrains Mono",monospace;font-size:8px}
 .footer-bottom{display:flex;justify-content:space-between;margin-top:40px;padding-top:17px;border-top:1px solid var(--line);color:var(--dim);font-size:8px}
 
-/* Toasts and modals */
 .toast-region{position:fixed;z-index:120;right:20px;bottom:20px;width:min(390px,calc(100vw - 32px));display:flex;flex-direction:column;gap:8px;pointer-events:none}
 .toast{display:flex;align-items:flex-start;gap:9px;padding:13px 12px 13px 14px;border:1px solid var(--line-strong);border-radius:12px;color:var(--ink);background:var(--panel-strong);box-shadow:var(--shadow);backdrop-filter:blur(20px);font-size:10px;pointer-events:auto;animation:toast-in .3s ease-out}
 @keyframes toast-in{from{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:none}}
@@ -549,7 +538,6 @@ select option{color:var(--ink);background:var(--panel-solid)}
 .modal-card .field-label input{margin-top:2px;height:44px;font-size:12px}
 .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:22px}
 
-/* Responsive */
 @media (max-width:1220px){
   .site-header{padding-inline:28px}
   .main-nav{gap:20px}
@@ -1123,11 +1111,10 @@ const Storage = {
   clearFiles() { try { localStorage.removeItem(FILES_KEY); } catch {} }
 };
 
-/* ---------------- DEFAULT FILTERS ---------------- */
 const defaultFilters = () => ({from:"", to:"", win:30, minOs:2, filial:"", bairro:"", status:"", tecnico:"", q:"", selectedSubjects:[]});
 
 /* ============================================================
-   COMPONENTS
+   APP
    ============================================================ */
 function App() {
   const stored = useMemo(()=>Storage.loadSettings(), []);
@@ -1162,6 +1149,12 @@ function App() {
   const subjects = useMemo(()=>[...new Set(dataset.all.map(r=>r.assunto))], [dataset.all]);
   const fileNames = useMemo(()=>Object.fromEntries(files.map(f=>[f.id, f.name])), [files]);
 
+  // ATUALIZAÇÃO 4: função closeModal que também reseta presetName
+  const closeModal = useCallback(()=>{
+    setModal(null);
+    setPresetName("");
+  }, []);
+
   const notify = useCallback((msg, tone="success")=>{
     const id = ++toastIdRef.current;
     setToasts(c=>[...c.slice(-2), {id, message:msg, tone}]);
@@ -1174,6 +1167,56 @@ function App() {
   }, []);
 
   useEffect(()=>{ document.documentElement.dataset.theme = theme; document.documentElement.style.colorScheme = theme; }, [theme]);
+
+  // ATUALIZAÇÃO 2 e 3: trava scroll do body e marca aria-hidden no main
+  useEffect(()=>{
+    const main = document.querySelector("main");
+    if (modal) {
+      document.body.classList.add("has-modal");
+      if (main) main.setAttribute("aria-hidden", "true");
+    } else {
+      document.body.classList.remove("has-modal");
+      if (main) main.removeAttribute("aria-hidden");
+    }
+    return ()=>{
+      document.body.classList.remove("has-modal");
+      if (main) main.removeAttribute("aria-hidden");
+    };
+  }, [modal]);
+
+  // ATUALIZAÇÃO 2: focus trap + foco automático
+  useEffect(()=>{
+    if (!modal) return;
+    const card = document.querySelector(".modal-card");
+    if (!card) return;
+    const focusables = card.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])');
+    if (focusables.length === 0) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    const initial = card.querySelector('[autofocus], input');
+    const focusTimer = setTimeout(()=>{ (initial || first).focus(); }, 40);
+    const onKey = (e)=>{
+      if (e.key !== "Tab") return;
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+    card.addEventListener("keydown", onKey);
+    return ()=>{
+      clearTimeout(focusTimer);
+      card.removeEventListener("keydown", onKey);
+    };
+  }, [modal]);
+
+  // Esc fecha o modal — usa closeModal
+  useEffect(()=>{
+    if (!modal) return;
+    const onKey = e => { if (e.key==="Escape") closeModal(); };
+    document.addEventListener("keydown", onKey);
+    return ()=>document.removeEventListener("keydown", onKey);
+  }, [modal, closeModal]);
 
   // Restore + notify
   useEffect(()=>{
@@ -1191,17 +1234,8 @@ function App() {
     }
   }, []); // eslint-disable-line
 
-  // Persist
   useEffect(()=>{ Storage.saveSettings({theme, filters, view, sortKey, sortAsc, presets, periodTouched}); }, [theme, filters, view, sortKey, sortAsc, presets, periodTouched]);
   useEffect(()=>{ Storage.saveFiles(files); }, [files]);
-
-  // Esc to close modal
-  useEffect(()=>{
-    if (!modal) return;
-    const onKey = e => { if (e.key==="Escape") setModal(null); };
-    document.addEventListener("keydown", onKey);
-    return ()=>document.removeEventListener("keydown", onKey);
-  }, [modal]);
 
   const updateFilters = (patch)=>{
     setFilters(cur=>({...cur, ...patch}));
@@ -1262,7 +1296,7 @@ function App() {
 
   const confirmClear = ()=>{
     setFiles([]); setFilters(defaultFilters()); setPeriodTouched(false);
-    setRestored(false); setErrors([]); setModal(null); Storage.clearFiles();
+    setRestored(false); setErrors([]); Storage.clearFiles(); closeModal();
     notify("Dados e resultados removidos deste navegador.", "info");
   };
 
@@ -1287,7 +1321,7 @@ function App() {
     const name = presetName.trim(); if (!name) return;
     const id = (crypto.randomUUID && crypto.randomUUID()) || "p-"+Date.now();
     setPresets(c=>[...c, {id, name, createdAt:Date.now(), filters:{...filters, selectedSubjects:[...filters.selectedSubjects], q:""}}]);
-    setPresetName(""); setModal(null);
+    closeModal();
     notify("Preset “"+name+"” salvo neste navegador.");
   };
 
@@ -1432,9 +1466,9 @@ function App() {
       </div>
 
       {modal && (
-        <div className="modal-backdrop" onMouseDown={e=>{if (e.target===e.currentTarget) setModal(null);}}>
+        <div className="modal-backdrop" onMouseDown={e=>{if (e.target===e.currentTarget) closeModal();}}>
           <div className="modal-card" role="dialog" aria-modal="true">
-            <button className="modal-close icon-button" onClick={()=>setModal(null)} aria-label="Fechar"><Icon name="x" size={17} /></button>
+            <button className="modal-close icon-button" onClick={closeModal} aria-label="Fechar"><Icon name="x" size={17} /></button>
             {modal==="preset" ? (
               <form onSubmit={savePreset}>
                 <span className="modal-icon"><Icon name="activity" size={21} /></span>
@@ -1444,7 +1478,7 @@ function App() {
                   <input autoFocus required maxLength={48} value={presetName} onChange={e=>setPresetName(e.target.value)} placeholder="Ex.: Reparos críticos · 15 dias" />
                 </label>
                 <div className="modal-actions">
-                  <button className="button button-ghost-dark" type="button" onClick={()=>setModal(null)}>Cancelar</button>
+                  <button className="button button-ghost-dark" type="button" onClick={closeModal}>Cancelar</button>
                   <button className="button button-primary" type="submit" disabled={!presetName.trim()}>Salvar preset</button>
                 </div>
               </form>
@@ -1454,7 +1488,7 @@ function App() {
                 <h2>Limpar todos os dados?</h2>
                 <p>Os arquivos importados e os resultados atuais serão removidos do workspace e do armazenamento local. Seus presets e preferências de tema serão mantidos.</p>
                 <div className="modal-actions">
-                  <button className="button button-ghost-dark" type="button" onClick={()=>setModal(null)}>Cancelar</button>
+                  <button className="button button-ghost-dark" type="button" onClick={closeModal}>Cancelar</button>
                   <button className="button button-danger" type="button" onClick={confirmClear}>Sim, limpar dados</button>
                 </div>
               </div>
@@ -1832,7 +1866,7 @@ function Kpis({analysis, view, onView}) {
         <div><span className="section-index">03 / LEITURA EXECUTIVA</span><h2>O recorte em números</h2></div>
         <span>Clique em um indicador para abrir a lista correspondente</span>
       </div>
-      <div className="kpi-grid">
+      <div className="kpi-grid" aria-live="polite">
         {cards.map((c,i)=>{
           const active = view===c.target && c.id!=="pct";
           return (
@@ -2253,7 +2287,6 @@ function Methodology({windowDays, minOs, onWindowChange}) {
   );
 }
 
-/* ---------------- MOUNT ---------------- */
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(<App />);
 </script>
